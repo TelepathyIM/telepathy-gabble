@@ -14,7 +14,7 @@ def is_tube(path, props):
 
 def check_no_tubes(conn_props):
     channels = conn_props.Get(cs.CONN_IFACE_REQUESTS, 'Channels')
-    tube_channels = filter(is_tube, channels)
+    tube_channels = list(filter(is_tube, channels))
     assert len(tube_channels) == 0, tube_channels
 
 def test(q, bus, conn, stream):

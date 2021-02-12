@@ -26,7 +26,7 @@ class File(object):
     def __init__(self, data=DEFAULT_DATA, name=DEFAULT_NAME,
             content_type=DEFAULT_CONTENT_TYPE, description=DEFAULT_DESCRIPTION,
             hash_type=cs.FILE_HASH_TYPE_MD5):
-        self.data = data
+        self.data = data.encode()
         self.size = len(self.data)
         self.name = name
 
@@ -281,7 +281,7 @@ class ReceiveFileTest(FileTransferTest):
         # org.freedesktop.Telepathy.Channel.Type.FileTransfer D-Bus properties
         assert props[cs.FT_STATE] == cs.FT_STATE_PENDING, props
         assert props[cs.FT_CONTENT_TYPE] == '', props
-        assert props[cs.FT_FILENAME].encode('utf-8') == self.file.name, props
+        assert props[cs.FT_FILENAME] == self.file.name, props
         assert props[cs.FT_SIZE] == self.file.size, props
         # FT's protocol doesn't allow us the send the hash info
         assert props[cs.FT_CONTENT_HASH_TYPE] == cs.FILE_HASH_TYPE_NONE, props
@@ -435,7 +435,7 @@ class SendFileTest(FileTransferTest):
         # org.freedesktop.Telepathy.Channel.Type.FileTransfer D-Bus properties
         assert props[cs.FT_STATE] == cs.FT_STATE_PENDING
         assert props[cs.FT_CONTENT_TYPE] == self.file.content_type
-        assert props[cs.FT_FILENAME].encode('utf-8') == self.file.name, props
+        assert props[cs.FT_FILENAME] == self.file.name, props
         assert props[cs.FT_SIZE] == self.file.size
         assert props[cs.FT_CONTENT_HASH_TYPE] == self.file.hash_type
         assert props[cs.FT_CONTENT_HASH] == self.file.hash
@@ -477,7 +477,7 @@ class SendFileTest(FileTransferTest):
             self.ft_channel.AcceptFile(self.address_type,
                 self.access_control, self.access_control_param, self.file.offset,
                 byte_arrays=True)
-        except dbus.DBusException, e:
+        except dbus.DBusException as e:
             assert e.get_dbus_name() == cs.NOT_AVAILABLE
         else:
             assert False

@@ -74,7 +74,7 @@ class JingleProtocol(object):
         kw['rate'] = rate
         kw['id'] = id
         children = [self.Parameter(name, value)
-                    for name, value in parameters.iteritems()]
+                    for name, value in parameters.items()]
         return ('payload-type', None, kw, children)
 
     def Parameter(self, name, value):

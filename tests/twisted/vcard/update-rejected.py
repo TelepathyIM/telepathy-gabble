@@ -16,7 +16,7 @@ def test(q, bus, conn, stream):
     expect_and_handle_get_vcard(q, stream)
     sync_stream(q, stream)
 
-    call_async(q, conn.Avatars, 'SetAvatar', 'william shatner',
+    call_async(q, conn.Avatars, 'SetAvatar', b'william shatner',
         'image/x-actor-name')
     # Gabble request the last version of the vCard before changing it
     expect_and_handle_get_vcard(q, stream)

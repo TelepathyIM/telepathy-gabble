@@ -28,7 +28,7 @@ def test(q, bus, conn, stream):
     vcard = iq.firstChildElement()
     photo = vcard.addElement('PHOTO')
     photo.addElement('TYPE', content='image/png')
-    photo.addElement('BINVAL', content=base64.b64encode('hello'))
+    photo.addElement('BINVAL', content=base64.b64encode(b'hello').decode())
     stream.send(iq)
 
     event = q.expect('dbus-signal', signal='AvatarRetrieved')

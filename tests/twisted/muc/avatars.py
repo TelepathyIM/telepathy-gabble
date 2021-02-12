@@ -18,11 +18,11 @@ import ns
 import constants as cs
 from mucutil import try_to_join_muc
 
-AVATAR_1_DATA = 'nyan'
+AVATAR_1_DATA = 'nyan'.encode()
 AVATAR_1_SHA1 = hashlib.sha1(AVATAR_1_DATA).hexdigest()
 AVATAR_1_MIME_TYPE = 'image/x-pop-tart'
 
-AVATAR_2_DATA = 'NYAN'
+AVATAR_2_DATA = 'NYAN'.encode()
 AVATAR_2_SHA1 = hashlib.sha1(AVATAR_2_DATA).hexdigest()
 AVATAR_2_MIME_TYPE = 'image/x-pop-tart'
 

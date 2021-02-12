@@ -15,7 +15,7 @@ import constants as cs
 from config import VOIP_ENABLED
 
 if not VOIP_ENABLED:
-    print "NOTE: built with --disable-voip"
+    print("NOTE: built with --disable-voip")
     raise SystemExit(77)
 
 class CallHoldAVTest(CallTest):
@@ -580,28 +580,28 @@ class CallHoldAVTest(CallTest):
             audio_cstream.CompleteReceivingStateChange(
                     cs.CALL_STREAM_FLOW_STATE_STOPPED,
                     dbus_interface = cs.CALL_STREAM_IFACE_MEDIA)
-        except dbus.DBusException, e:
+        except dbus.DBusException as e:
             assertEquals (cs.INVALID_ARGUMENT, e.get_dbus_name ())
     
         try:
             audio_cstream.CompleteSendingStateChange(
                     cs.CALL_STREAM_FLOW_STATE_STOPPED,
                     dbus_interface = cs.CALL_STREAM_IFACE_MEDIA)
-        except dbus.DBusException, e:
+        except dbus.DBusException as e:
             assertEquals (cs.INVALID_ARGUMENT, e.get_dbus_name ())
     
         try:
             video_cstream.CompleteReceivingStateChange(
                     cs.CALL_STREAM_FLOW_STATE_STOPPED,
                     dbus_interface = cs.CALL_STREAM_IFACE_MEDIA)
-        except dbus.DBusException, e:
+        except dbus.DBusException as e:
             assertEquals (cs.INVALID_ARGUMENT, e.get_dbus_name ())
     
         try:
             video_cstream.CompleteSendingStateChange(
                     cs.CALL_STREAM_FLOW_STATE_STOPPED,
                     dbus_interface = cs.CALL_STREAM_IFACE_MEDIA)
-        except dbus.DBusException, e:
+        except dbus.DBusException as e:
             assertEquals (cs.INVALID_ARGUMENT, e.get_dbus_name ())
     
         audio_cstream.CompleteReceivingStateChange(

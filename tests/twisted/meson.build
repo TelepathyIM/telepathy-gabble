@@ -112,12 +112,21 @@ has_twisted = run_command(python, '-c', 'import twisted')
 has_pydbus = run_command(python, '-c', 'import dbus')
 
 if has_twisted.returncode() == 0 and has_pydbus.returncode() == 0
+  tnum = 0
   foreach t: twisted_tests
     test('@0@'.format(t),
         python,
 	args: [t],
-        env: ['PYTHONPATH=@0@:@1@'.format(meson.current_source_dir(),meson.current_build_dir())],
+        env: [
+          'PYTHONPATH=@0@:@1@:@0@/jingle'.format(meson.current_source_dir(),meson.current_build_dir()),
+          'CHECK_TWISTED_PORT=@0@'.format(6666 + tnum),
+          'CHECK_TWISTED_RANGE=@0@,@1@'.format(9999 + tnum*100, 9999 + (tnum+1)*100-1),
+          'CHECK_TWISTED_VERBOSE=1',
+          'GABBLE_TWISTED_BDIR='+meson.current_build_dir(),
+          'GABBLE_TWISTED_PATH='+meson.current_source_dir()
+        ],
         suite: 'twisted')
+    tnum = tnum + 1
   endforeach
 else
   message('''Configured without Twisted test support. To enable them,

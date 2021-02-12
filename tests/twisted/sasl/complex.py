@@ -9,12 +9,12 @@ import constants as cs
 from saslutil import SaslEventAuthenticator, connect_and_get_sasl_channel
 
 JID = "test@example.org"
-INITIAL_RESPONSE = 'Thunder and lightning. Enter three Witches.'
+INITIAL_RESPONSE = b'Thunder and lightning. Enter three Witches.'
 CR_PAIRS = [
-        ('When shall we three meet again?', 'Ere the set of sun.'),
-        ('Where the place?', 'Upon the heath.'),
+        (b'When shall we three meet again?', b'Ere the set of sun.'),
+        (b'Where the place?', b'Upon the heath.'),
         ]
-SUCCESS_DATA = 'Exeunt.'
+SUCCESS_DATA = b'Exeunt.'
 MECHANISMS = ["PLAIN", "DIGEST-MD5", "SCOTTISH-PLAY"]
 
 def test_complex_success(q, bus, conn, stream, with_extra_data=True,
@@ -45,11 +45,11 @@ def test_complex_success(q, bus, conn, stream, with_extra_data=True,
 
     if not with_extra_data:
         # send the stage directions in-band instead
-        authenticator.challenge('')
+        authenticator.challenge(b'')
         e = q.expect('dbus-signal', signal='NewChallenge',
                      interface=cs.CHANNEL_IFACE_SASL_AUTH)
         # this ought to be '' but dbus-python has fd.o #28131
-        assert e.args in ([''], ['None'])
+        assert e.args in ([b''], [b'None'])
         chan.SASLAuthentication.Respond(INITIAL_RESPONSE)
         q.expect('sasl-response', response=INITIAL_RESPONSE)
 
@@ -79,7 +79,7 @@ def test_complex_success(q, bus, conn, stream, with_extra_data=True,
                 interface=cs.CHANNEL_IFACE_SASL_AUTH,
                 args=[cs.SASL_STATUS_CLIENT_ACCEPTED, '', {}])
     else:
-        chan.SASLAuthentication.Respond(dbus.ByteArray(''))
+        chan.SASLAuthentication.Respond(dbus.ByteArray(b''))
 
     if with_extra_data:
         # Wocky removes the distinction between a challenge containing
@@ -89,7 +89,7 @@ def test_complex_success(q, bus, conn, stream, with_extra_data=True,
         # we shouldn't get a response to a success.
         q.forbid_events([EventPattern('sasl-response')])
     else:
-        q.expect('sasl-response', response='')
+        q.expect('sasl-response', response=b'')
         authenticator.success(None)
 
     if not accept_early:

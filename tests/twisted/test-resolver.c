@@ -161,12 +161,19 @@ lookup_by_name (GResolver *resolver,
   return result;
 }
 
+#if GLIB_VERSION_CUR_STABLE < G_ENCODE_VERSION(2,60)
+typedef enum {
+  G_RESOLVER_NAME_LOOKUP_FLAGS_DEFAULT
+} GResolverNameLookupFlags;
+#endif
+
 static void
-lookup_by_name_async (GResolver *resolver,
-                      const gchar *hostname,
-                      GCancellable *cancellable,
-                      GAsyncReadyCallback  cb,
-                      gpointer data)
+lookup_by_name_with_flags_async (GResolver *resolver,
+                                 const gchar *hostname,
+                                 GResolverNameLookupFlags flags,
+                                 GCancellable *cancellable,
+                                 GAsyncReadyCallback  cb,
+                                 gpointer data)
 {
   GObject *source = G_OBJECT (resolver);
   GSimpleAsyncResult *res =
@@ -190,6 +197,18 @@ lookup_by_name_async (GResolver *resolver,
   g_object_unref (res);
 }
 
+static void
+lookup_by_name_async (GResolver *resolver,
+                      const gchar *hostname,
+                      GCancellable *cancellable,
+                      GAsyncReadyCallback  cb,
+                      gpointer data)
+{
+  lookup_by_name_with_flags_async (resolver, hostname,
+                                   G_RESOLVER_NAME_LOOKUP_FLAGS_DEFAULT,
+                                   cancellable, cb, data);
+}
+
 static GList *
 lookup_by_name_finish (GResolver *resolver,
     GAsyncResult *result,
@@ -203,6 +222,15 @@ lookup_by_name_finish (GResolver *resolver,
   return g_simple_async_result_get_op_res_gpointer (simple);
 }
 
+#if GLIB_VERSION_CUR_STABLE >= (G_ENCODE_VERSION (2, 60))
+static GList *
+lookup_by_name_with_flags_finish (GResolver *resolver,
+    GAsyncResult *result,
+    GError **error)
+{
+  return lookup_by_name_finish (resolver, result, error);
+}
+#endif
 
 /* ************************************************************************* */
 
@@ -220,6 +248,10 @@ test_resolver_class_init (TestResolverClass *klass)
   resolver_class->lookup_by_name_finish    = lookup_by_name_finish;
   resolver_class->lookup_service_async     = lookup_service_async;
   resolver_class->lookup_service_finish    = lookup_service_finish;
+#if GLIB_VERSION_CUR_STABLE >= (G_ENCODE_VERSION (2, 60))
+  resolver_class->lookup_by_name_with_flags_async  = lookup_by_name_with_flags_async;
+  resolver_class->lookup_by_name_with_flags_finish = lookup_by_name_with_flags_finish;
+#endif
   resolver_class->lookup_by_name = lookup_by_name;
 }
 

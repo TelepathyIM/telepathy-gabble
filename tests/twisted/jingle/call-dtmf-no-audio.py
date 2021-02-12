@@ -10,7 +10,7 @@ from call_helper import CallTest, run_call_test
 from config import VOIP_ENABLED
 
 if not VOIP_ENABLED:
-    print "NOTE: built with --disable-voip"
+    print("NOTE: built with --disable-voip")
     raise SystemExit(77)
 
 class CallDtmfNoAudioTest(CallTest):

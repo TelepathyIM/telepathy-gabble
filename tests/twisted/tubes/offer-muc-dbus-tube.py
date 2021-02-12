@@ -18,7 +18,7 @@ from mucutil import join_muc, echo_muc_presence
 
 sample_parameters = dbus.Dictionary({
     's': 'hello',
-    'ay': dbus.ByteArray('hello'),
+    'ay': dbus.ByteArray(b'hello'),
     'u': dbus.UInt32(123),
     'i': dbus.Int32(-123),
     }, signature='sv')
@@ -72,14 +72,14 @@ def fire_signal_on_tube(q, tube, chatroom, dbus_stream_id, my_bus_name):
     binary = base64.b64decode(str(ibb_data))
     # little and big endian versions of: SIGNAL, NO_REPLY, protocol v1,
     # 4-byte payload
-    assert binary.startswith('l\x04\x01\x01' '\x04\x00\x00\x00') or \
-           binary.startswith('B\x04\x01\x01' '\x00\x00\x00\x04')
+    assert binary.startswith(b'l\x04\x01\x01' b'\x04\x00\x00\x00') or \
+           binary.startswith(b'B\x04\x01\x01' b'\x00\x00\x00\x04')
     # little and big endian versions of the 4-byte payload, UInt32(42)
-    assert (binary[0] == 'l' and binary.endswith('\x2a\x00\x00\x00')) or \
-           (binary[0] == 'B' and binary.endswith('\x00\x00\x00\x2a'))
+    assert (binary[0] == b'l'[0] and binary.endswith(b'\x2a\x00\x00\x00')) or \
+           (binary[0] == b'B'[0] and binary.endswith(b'\x00\x00\x00\x2a')), binary
     # XXX: verify that it's actually in the "sender" slot, rather than just
     # being in the message somewhere
-    assert my_bus_name in binary
+    assert my_bus_name.encode() in binary
 
     # Send another big signal which has to be split on 3 stanzas
     signal = SignalMessage('/', 'foo.bar', 'baz')
@@ -127,9 +127,9 @@ def test(q, bus, conn, stream, access_control):
     }
     join_muc(q, bus, conn, stream, muc, request=request)
 
-    e = q.expect('dbus-signal', signal='NewChannels')
+    exv = q.expect('dbus-signal', signal='NewChannels')
 
-    channels = e.args[0]
+    channels = exv.args[0]
     assert len(channels) == 1
     path, prop = channels[0]
     assert prop[cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_DBUS_TUBE
@@ -154,7 +154,7 @@ def test(q, bus, conn, stream, access_control):
     # try to offer using a wrong access control
     try:
         tube_chan.DBusTube.Offer(sample_parameters, cs.SOCKET_ACCESS_CONTROL_PORT)
-    except dbus.DBusException, e:
+    except dbus.DBusException as e:
         assertEquals(e.get_dbus_name(), cs.INVALID_ARGUMENT)
     else:
         assert False
@@ -280,7 +280,7 @@ def test(q, bus, conn, stream, access_control):
                                            EventPattern('dbus-signal', signal='NewChannels',
                                                         predicate=new_tube))
 
-    channels = e.args[0]
+    channels = exv.args[0]
     tube_path, props = tube_event.args[0][0]
     assertEquals(cs.CHANNEL_TYPE_DBUS_TUBE, props[cs.CHANNEL_TYPE])
     assertEquals('chat2@conf.localhost/test', props[cs.INITIATOR_ID])

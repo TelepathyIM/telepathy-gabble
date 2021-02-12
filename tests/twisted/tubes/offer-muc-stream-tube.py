@@ -18,7 +18,7 @@ from twisted.internet import reactor
 
 sample_parameters = dbus.Dictionary({
     's': 'hello',
-    'ay': dbus.ByteArray('hello'),
+    'ay': dbus.ByteArray(b'hello'),
     'u': dbus.UInt32(123),
     'i': dbus.Int32(-123),
     }, signature='sv')
@@ -43,11 +43,11 @@ def use_tube(q, bytestream, protocol, conn_id):
     bytestream.open_bytestream()
 
     # have the fake client send us some data
-    bytestream.send_data('hello initiator')
+    bytestream.send_data(b'hello initiator')
 
     # the server reply
-    event = q.expect('socket-data', data='hello initiator', protocol=protocol)
-    data = 'hello joiner'
+    event = q.expect('socket-data', data=b'hello initiator', protocol=protocol)
+    data = b'hello joiner'
     protocol.sendData(data)
 
     # we receive server's data

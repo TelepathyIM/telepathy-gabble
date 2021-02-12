@@ -11,7 +11,7 @@ from jingleshareutils import test_ft_caps_from_contact
 from config import JINGLE_FILE_TRANSFER_ENABLED
 
 if not JINGLE_FILE_TRANSFER_ENABLED:
-    print "NOTE: built with --disable-file-transfer or --disable-voip"
+    print("NOTE: built with --disable-file-transfer or --disable-voip")
     raise SystemExit(77)
 
 def test(q, bus, conn, stream):
@@ -23,7 +23,7 @@ def test(q, bus, conn, stream):
              ("folder", "Folder no size", None, True)]
 
     test_ft_caps_from_contact(q, bus, conn, stream, contact,
-        2L, client)
+        2, client)
 
     self_handle = conn.Properties.Get(cs.CONN, "SelfHandle")
     jid =  conn.inspect_contact_sync(self_handle)
@@ -119,11 +119,11 @@ def test(q, bus, conn, stream):
         assertSameSets(
             [ cs.CHANNEL_IFACE_FILE_TRANSFER_METADATA,
             ], props[cs.INTERFACES])
-        assert props[cs.TARGET_HANDLE] == 2L, props
+        assert props[cs.TARGET_HANDLE] == 2, props
         assert props[cs.TARGET_ID] == contact.replace("/Resource", ""), props
         assert props[cs.TARGET_HANDLE_TYPE] == cs.HT_CONTACT, props
         assert props[cs.REQUESTED] == False, props
-        assert props[cs.INITIATOR_HANDLE] == 2L, props
+        assert props[cs.INITIATOR_HANDLE] == 2, props
         assert props[cs.INITIATOR_ID] == contact.replace("/Resource", ""), props
         assert props[cs.FT_STATE] == cs.FT_STATE_PENDING, props
         assert props[cs.FT_CONTENT_TYPE] == '', props

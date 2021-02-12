@@ -15,7 +15,7 @@ CONSOLE_PLUGIN_IFACE = cs.PREFIX + ".Gabble.Plugin.Console"
 STACY = 'stacy@pilgrim.lit'
 
 if not PLUGINS_ENABLED:
-    print "NOTE: built without --enable-plugins, not testing XMPP console"
+    print("NOTE: built without --enable-plugins, not testing XMPP console")
     raise SystemExit(77)
 
 def send_unrecognised_get(q, stream):

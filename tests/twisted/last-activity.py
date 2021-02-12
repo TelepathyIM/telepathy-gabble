@@ -22,7 +22,7 @@ def test(q, bus, conn, stream):
         query_ns=ns.LAST, query_name='query')
     # No real assertions about the number of seconds; this is just a smoke
     # test.
-    seconds = e.query['seconds']
+    seconds = int(e.query['seconds'])
     assert seconds >= 0
 
     # Juliet is not.

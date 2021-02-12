@@ -1,4 +1,4 @@
-twisted_tube_tests = files(
+twisted_tests += files(
   'accept-muc-dbus-tube.py',
   'accept-muc-stream-tube.py',
   'accept-private-dbus-tube.py',

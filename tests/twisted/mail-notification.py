@@ -38,8 +38,8 @@ def test_google_featured(q, bus, conn, stream):
     # E-mail thread 1 data
     thread1_id = "1"
     # Dates are 32bit unsigned integers, let's use the biggest possible value
-    thread1_date = (pow(2,32) - 1) * 1000L
-    thread1_url = 'http://mail.google.com/mail/#inbox/%x' % long(thread1_id)
+    thread1_date = (pow(2,32) - 1) * 1000
+    thread1_url = 'http://mail.google.com/mail/#inbox/%x' % int(thread1_id)
     thread1_senders = [('John Smith', 'john@smith.com'),
                        ('Denis Tremblay', 'denis@tremblay.qc.ca')]
     thread1_subject = "subject1"
@@ -47,15 +47,15 @@ def test_google_featured(q, bus, conn, stream):
 
     # Email thread 2 data
     thread2_id = "2"
-    thread2_date = 1234L
-    thread2_url = 'http://mail.google.com/mail/#inbox/%x' % long(thread2_id)
+    thread2_date = 1234
+    thread2_url = 'http://mail.google.com/mail/#inbox/%x' % int(thread2_id)
     thread2_senders = [('Sam Gratte', 'sam@gratte.edu'),]
     thread2_subject = "subject2"
     thread2_snippet = "body2"
 
     # Email thread 3 data
     thread3_id = "3"
-    thread3_date = 1235L
+    thread3_date = 1235
     thread3_senders = [('Le Chat', 'le@chat.fr'),]
     thread3_subject = "subject3"
     thread3_snippet = "body3"
@@ -166,7 +166,7 @@ def test_google_featured(q, bus, conn, stream):
     assert mail1['senders'] == thread1_senders
 
     assert mail2 != None
-    assert mail2['received-timestamp'] == thread2_date / 1000
+    assert mail2['received-timestamp'] == int(thread2_date / 1000), [ mail2['received-timestamp'], thread2_date / 1000]
     assert mail2['subject'] == thread2_subject
     assert mail2['truncated'] == True
     assert mail2['content'] == thread2_snippet
@@ -185,14 +185,14 @@ def test_google_featured(q, bus, conn, stream):
 
     # Validate stored e-mails with original data
     assert stored_mail1 != None
-    assert stored_mail1['received-timestamp'] == thread1_date / 1000
+    assert stored_mail1['received-timestamp'] == int(thread1_date / 1000)
     assert stored_mail1['subject'] == thread1_subject
     assert stored_mail1['truncated'] == True
     assert stored_mail1['content'] == thread1_snippet
     assert stored_mail1['senders'] == thread1_senders
 
     assert stored_mail2 != None
-    assert stored_mail2['received-timestamp'] == thread2_date / 1000
+    assert stored_mail2['received-timestamp'] == int(thread2_date / 1000)
     assert stored_mail2['subject'] == thread2_subject
     assert stored_mail2['truncated'] == True
     assert stored_mail2['content'] == thread2_snippet
@@ -316,12 +316,12 @@ def test_no_google_featured(q, bus, conn, stream):
 
     try:
         conn.MailNotification.RequestInboxURL()
-    except dbus.DBusException, e:
+    except dbus.DBusException as e:
         assert e.get_dbus_name() == cs.NOT_IMPLEMENTED
 
     try:
         conn.MailNotification.RequestMailURL("1", "http://test.com/mail")
-    except dbus.DBusException, e:
+    except dbus.DBusException as e:
         assert e.get_dbus_name() == cs.NOT_IMPLEMENTED
 
     # Make sure all properties return with empty or 0 data including

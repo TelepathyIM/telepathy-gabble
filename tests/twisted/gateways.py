@@ -14,7 +14,7 @@ from config import PLUGINS_ENABLED
 PLUGIN_IFACE = cs.PREFIX + ".Gabble.Plugin.Gateways"
 
 if not PLUGINS_ENABLED:
-    print "NOTE: built without --enable-plugins, not testing plugins"
+    print("NOTE: built without --enable-plugins, not testing plugins")
     raise SystemExit(77)
 
 def test_success(q, gateways_iface, stream):

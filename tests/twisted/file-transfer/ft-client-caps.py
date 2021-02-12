@@ -51,11 +51,11 @@ import ns
 from config import FILE_TRANSFER_ENABLED
 
 if not FILE_TRANSFER_ENABLED:
-    print "NOTE: built with --disable-file-transfer"
+    print("NOTE: built with --disable-file-transfer")
     raise SystemExit(77)
 
 def dict_union(a, b):
-    return dbus.Dictionary(a.items() + b.items(), signature='sv')
+    return dbus.Dictionary(list(a.items()) + list(b.items()), signature='sv')
 
 no_service_fixed_properties = {
     cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT,
@@ -82,8 +82,9 @@ go_fixed_properties = dict_union(no_service_fixed_properties, {
 
 client = 'http://telepathy.freedesktop.org/another-fake-client'
 
+from servicetest import sort_d
 def assertSameElements(a, b):
-    assertEquals(sorted(a), sorted(b))
+    assertEquals(sort_d(a), sort_d(b))
 
 def receive_caps(q, conn, stream, contact, contact_handle, features,
                  expected_caps, expect_disco=True, expect_ccc=True):

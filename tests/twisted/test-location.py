@@ -73,7 +73,7 @@ def test(q, bus, conn, stream):
     try:
         conn.Set (cs.CONN_IFACE_LOCATION, 'LocationAccessControl', bad_access_control,
             dbus_interface =cs.PROPERTIES_IFACE)
-    except dbus.DBusException, e:
+    except dbus.DBusException as e:
         pass
     else:
         assert False, "Should have had an error!"
@@ -83,7 +83,7 @@ def test(q, bus, conn, stream):
     try:
         conn.Set (cs.CONN_IFACE_LOCATION, 'LocationAccessControl', bad_access_control,
             dbus_interface =cs.PROPERTIES_IFACE)
-    except dbus.DBusException, e:
+    except dbus.DBusException as e:
         assert e.get_dbus_name() == cs.INVALID_ARGUMENT, e.get_dbus_name()
     else:
         assert False, "Should have had an error!"
@@ -95,7 +95,7 @@ def test(q, bus, conn, stream):
     try:
         conn.Set (cs.CONN_IFACE_LOCATION, 'LocationAccessControl', bad_access_control,
             dbus_interface =cs.PROPERTIES_IFACE)
-    except dbus.DBusException, e:
+    except dbus.DBusException as e:
         assert e.get_dbus_name() == cs.INVALID_ARGUMENT, e.get_dbus_name()
     else:
         assert False, "Should have had an error!"
@@ -110,7 +110,7 @@ def test(q, bus, conn, stream):
         conn.Set (cs.CONN_IFACE_LOCATION, 'LocationAccessControlTypes',
             access_control_types,
             dbus_interface =cs.PROPERTIES_IFACE)
-    except dbus.DBusException, e:
+    except dbus.DBusException as e:
         assert e.get_dbus_name() == cs.PERMISSION_DENIED, e.get_dbus_name()
     else:
         assert False, "Should have had an error!"
@@ -187,7 +187,7 @@ def test(q, bus, conn, stream):
                         elem('lon')(u'5.5'),
                         elem('country')(u'Belgium'),
                         elem('accuracy')(u'2.3'),
-                        elem('timestamp')(unicode(date_str)),
+                        elem('timestamp')(date_str),
                         # invalid element, will be ignored by Gabble
                         elem('badger')(u'mushroom'),
                     )
@@ -239,7 +239,7 @@ def test(q, bus, conn, stream):
 
     try:
         conn.Location.SetLocation({'lat': 'pony'})
-    except dbus.DBusException, e:
+    except dbus.DBusException as e:
         assertEquals(e.get_dbus_name(), cs.INVALID_ARGUMENT)
     else:
         assert False

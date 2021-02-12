@@ -59,7 +59,7 @@ def handle_muc_owner_get_iq(stream, stanza):
     x = query.addElement(('jabber:x:data', 'x'))
     x['type'] = 'form'
 
-    for var, values in get_default_form().iteritems():
+    for var, values in get_default_form().items():
         if len(values) > 1:
             field = x.addElement('field')
             field['type'] = 'list-multi'
@@ -143,7 +143,7 @@ def test_some_stuff(q, bus, conn, stream):
     pc = q.expect('dbus-signal', signal='PropertiesChanged',
         predicate=lambda e: e.args[0] == cs.CHANNEL_IFACE_ROOM_CONFIG)
     _, changed, invalidated = pc.args
-    assertEquals(['MutableProperties'], changed.keys())
+    assertEquals(['MutableProperties'], list(changed.keys()))
     assertContains('Description', changed['MutableProperties'])
 
     handle_disco_info_iq(stream, disco_iq.stanza)

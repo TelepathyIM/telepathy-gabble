@@ -5,7 +5,7 @@ import ns
 
 def expect_attempt(q, expected_muc_jid, expected_password):
     e = q.expect('stream-presence', to=expected_muc_jid)
-    x = e.stanza.elements(uri=ns.MUC, name='x').next()
+    x = next(e.stanza.elements(uri=ns.MUC, name='x'))
 
     p = x.firstChildElement()
     assertEquals(expected_password, str(p))

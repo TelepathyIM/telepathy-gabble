@@ -7,7 +7,7 @@ from gabbletest import exec_test
 import constants as cs
 from saslutil import connect_and_get_sasl_channel
 
-PASSWORD = "pass"
+PASSWORD = b"pass"
 
 def test_close_straight_after_accept(q, bus, conn, stream):
     chan, props = connect_and_get_sasl_channel(q, bus, conn)

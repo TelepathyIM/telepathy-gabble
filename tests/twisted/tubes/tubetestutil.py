@@ -278,13 +278,13 @@ def create_server(q, address_type, factory=None, block_reading=False,
         path = tempfile.mkstemp(suffix=streamfile)[1]
         try:
             os.remove(path)
-        except OSError, e:
+        except OSError as e:
             if e.errno != errno.ENOENT:
                 raise
         reactor.listenUNIX(path, factory)
         _to_cleanup.append(path)
 
-        return dbus.ByteArray(path)
+        return dbus.ByteArray(path.encode())
 
     elif address_type == cs.SOCKET_ADDRESS_TYPE_IPV4:
         for port in range(5000,6000):

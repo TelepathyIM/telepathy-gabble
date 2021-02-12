@@ -11,7 +11,7 @@ from callutils import *
 from config import VOIP_ENABLED
 
 if not VOIP_ENABLED:
-    print "NOTE: built with --disable-voip"
+    print("NOTE: built with --disable-voip")
     raise SystemExit(77)
 
 muc = "muji@test"
@@ -21,7 +21,7 @@ def run_cancel_test(q, bus, conn, stream):
     jt = JingleTest2(jp, conn, q, stream, 'test@localhost', muc + '/bob')
     jt.prepare()
 
-    for x in xrange (0, 10):
+    for x in range (0, 10):
         (path, props) = create_muji_channel (q, conn, stream, muc, x > 0)
         channel = bus.get_object (conn.bus_name, path)
 

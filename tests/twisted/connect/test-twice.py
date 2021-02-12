@@ -22,7 +22,7 @@ def test(q, bus, conns, streams):
              path=conn1.object.object_path)
     q.expect('stream-authenticated')
     q.expect('dbus-signal', signal='PresencesChanged',
-             args=[{1L: (cs.PRESENCE_AVAILABLE, 'available', '')}],
+             args=[{1: (cs.PRESENCE_AVAILABLE, 'available', '')}],
              path=conn1.object.object_path)
     q.expect('dbus-signal', signal='StatusChanged',
              args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED],
@@ -38,7 +38,7 @@ def test(q, bus, conns, streams):
              path=conn2.object.object_path)
     q.expect('stream-authenticated')
     q.expect('dbus-signal', signal='PresencesChanged',
-             args=[{1L: (cs.PRESENCE_AVAILABLE, 'available', '')}],
+             args=[{1: (cs.PRESENCE_AVAILABLE, 'available', '')}],
              path=conn2.object.object_path)
     q.expect('dbus-signal', signal='StatusChanged',
              args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED],

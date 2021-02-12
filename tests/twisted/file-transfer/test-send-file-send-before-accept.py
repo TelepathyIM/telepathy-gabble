@@ -5,7 +5,7 @@ from file_transfer_helper import SendFileTest, exec_file_transfer_test
 from config import FILE_TRANSFER_ENABLED
 
 if not FILE_TRANSFER_ENABLED:
-    print "NOTE: built with --disable-file-transfer"
+    print("NOTE: built with --disable-file-transfer")
     raise SystemExit(77)
 
 class SendFileSendBeforeAccept(SendFileTest):
@@ -42,7 +42,7 @@ class SendFileSendBeforeAccept(SendFileTest):
         self.ft_channel.connect_to_signal('FileTransferStateChanged', ft_state_changed_cb)
 
         # get data from bytestream
-        data = ''
+        data = b''
         while len(data) < to_receive:
             data += self.bytestream.get_data()
 

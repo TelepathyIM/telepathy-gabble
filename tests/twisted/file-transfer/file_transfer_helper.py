@@ -27,7 +27,7 @@ class File(object):
     def __init__(self, data=DEFAULT_DATA, name=DEFAULT_NAME,
             content_type=DEFAULT_CONTENT_TYPE, description=DEFAULT_DESCRIPTION,
             hash_type=cs.FILE_HASH_TYPE_MD5):
-        self.data = data
+        self.data = data.encode()
         self.size = len(self.data)
         self.name = name
 
@@ -278,11 +278,11 @@ class ReceiveFileTest(FileTransferTest):
                 self.access_control, self.access_control_param,
                 self.file.offset,
                 byte_arrays=True)
-        except dbus.DBusException, e:
+        except dbus.DBusException as e:
             if self.address_type == cs.SOCKET_ADDRESS_TYPE_IPV6 and \
                 e.get_dbus_name() == cs.NOT_AVAILABLE and \
                 e.get_dbus_message() == "Could not set up local socket":
-                print "Ignoring error for ipv6 address space"
+                print("Ignoring error for ipv6 address space")
                 return True
             else:
                 raise e
@@ -332,7 +332,7 @@ class ReceiveFileTest(FileTransferTest):
 
     def _read_file_from_socket(self, s):
         # Read the file from Gabble's socket
-        data = ''
+        data = b''
         to_receive = self.file.size - self.file.offset
 
         e = self.q.expect('dbus-signal', signal='TransferredBytesChanged')
@@ -488,11 +488,11 @@ class SendFileTest(FileTransferTest):
             self.address = self.ft_channel.ProvideFile(self.address_type,
                 self.access_control, self.access_control_param,
                 byte_arrays=True)
-        except dbus.DBusException, e:
+        except dbus.DBusException as e:
             if self.address_type == cs.SOCKET_ADDRESS_TYPE_IPV6 and \
               e.get_dbus_name() == cs.NOT_AVAILABLE and \
               e.get_dbus_message() == "Could not set up local socket":
-                print "Ignoring error for ipv6 address space"
+                print("Ignoring error for ipv6 address space")
                 return True
             else:
                 raise e
@@ -529,7 +529,7 @@ class SendFileTest(FileTransferTest):
         self.ft_channel.connect_to_signal('FileTransferStateChanged', ft_state_changed_cb)
 
         # get data from bytestream
-        data = ''
+        data = b''
         while len(data) < to_receive:
             data += self.bytestream.get_data()
 

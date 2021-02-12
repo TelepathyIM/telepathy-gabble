@@ -38,7 +38,7 @@ def add_roster_item(query, contact, state, ask, attrs={}):
     if ask:
         item['ask'] = 'subscribe'
 
-    for k, v in attrs.iteritems():
+    for k, v in attrs.items():
         item[k] = v
 
     return item

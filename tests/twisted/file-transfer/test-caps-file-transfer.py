@@ -14,7 +14,7 @@ import ns
 from config import FILE_TRANSFER_ENABLED
 
 if not FILE_TRANSFER_ENABLED:
-    print "NOTE: built with --disable-file-transfer"
+    print("NOTE: built with --disable-file-transfer")
     raise SystemExit(77)
 
 def test_ft_caps_from_contact(q, bus, conn, stream, contact, contact_handle, client):
@@ -106,7 +106,7 @@ def test(q, bus, conn, stream):
     client = 'http://telepathy.freedesktop.org/fake-ft-client'
 
     test_ft_caps_from_contact(q, bus, conn, stream, 'bilbo1@foo.com/Foo',
-        2L, client)
+        2, client)
 
     # our own capabilities, formerly tested here, are now in
     # tests/twisted/caps/advertise-contact-capabilities.py

@@ -4,7 +4,7 @@ from file_transfer_helper import SendFileTest, FileTransferTest, \
 from config import JINGLE_FILE_TRANSFER_ENABLED
 
 if not JINGLE_FILE_TRANSFER_ENABLED:
-    print "NOTE: built with --disable-file-transfer or --disable-voip"
+    print("NOTE: built with --disable-file-transfer or --disable-voip")
     raise SystemExit(77)
 
 print("FIXME: test is not stable enough.\n" +

@@ -63,7 +63,7 @@ def expect_tube_activity(q, bus, conn, stream, bytestream_cls, address_type,
         address_type, address, access_control, access_control_param)
 
     protocol = event_socket.protocol
-    data = "hello initiator"
+    data = b"hello initiator"
     protocol.sendData(data)
 
     bytestream, profile = create_from_si_offer(stream, q, bytestream_cls, event_iq.stanza,
@@ -86,17 +86,17 @@ def expect_tube_activity(q, bus, conn, stream, bytestream_cls, address_type,
     assert data == binary, binary
 
     # reply to the initiator
-    bytestream.send_data('hello joiner')
+    bytestream.send_data(b'hello joiner')
 
     e = q.expect('socket-data')
-    assert e.data == 'hello joiner'
+    assert e.data == b'hello joiner'
 
     return bytestream, conn_id
 
 def test(q, bus, conn, stream, bytestream_cls,
         address_type, access_control, access_control_param):
     if access_control == cs.SOCKET_ACCESS_CONTROL_CREDENTIALS:
-        print "Skip Socket_Access_Control_Credentials (fdo #45445)"
+        print("Skip Socket_Access_Control_Credentials (fdo #45445)")
         return
 
     vcard_event, roster_event, disco_event = q.expect_many(
@@ -165,6 +165,8 @@ def test(q, bus, conn, stream, bytestream_cls,
             args=[2]))
 
     socket_address = accept_return_event.value[0]
+    if isinstance(socket_address, bytes):
+        socket_address = socket_address.decode()
 
     bytestream, conn_id = expect_tube_activity(q, bus, conn, stream, bytestream_cls,
         address_type, socket_address, access_control, access_control_param)

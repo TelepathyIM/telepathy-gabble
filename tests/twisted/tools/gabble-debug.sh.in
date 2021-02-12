@@ -8,7 +8,7 @@ export GIBBER_DEBUG
 export WOCKY_DEBUG
 GABBLE_TIMING=1
 export GABBLE_TIMING
-GABBLE_PLUGIN_DIR="@abs_top_builddir@/plugins/"
+GABBLE_PLUGIN_DIR="@abs_top_builddir@/plugins:@abs_top_builddir@/plugins/console"
 export GABBLE_PLUGIN_DIR
 WOCKY_CAPS_CACHE=:memory:
 export WOCKY_CAPS_CACHE

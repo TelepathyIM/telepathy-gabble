@@ -47,7 +47,7 @@ def test(q, bus, conn, stream):
     presences = proto_prop_iface.Get(cs.PROTOCOL_IFACE_PRESENCES, 'Statuses');
     # Plugins could add additional statuses, so we check if expected_status is
     # included in presences rather than equality.
-    for k, v in expected_status.iteritems():
+    for k, v in expected_status.items():
         assertEquals(expected_status[k], unwrap(presences[k]))
 
     # (Only) 'account' is mandatory for IdentifyAccount()
@@ -73,7 +73,7 @@ def test(q, bus, conn, stream):
     q.expect('dbus-signal', signal='StatusChanged', args=[cs.CONN_STATUS_CONNECTING, cs.CSR_REQUESTED])
     q.expect('stream-authenticated')
     q.expect('dbus-signal', signal='PresencesChanged',
-        args=[{1L: (cs.PRESENCE_AVAILABLE, 'available', '')}])
+        args=[{1: (cs.PRESENCE_AVAILABLE, 'available', '')}])
     q.expect('dbus-signal', signal='StatusChanged', args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
     return
 

@@ -22,11 +22,11 @@ def test(q, bus, conn, stream):
     result = make_result_iq(stream, event.stanza)
     photo = result.firstChildElement().addElement('PHOTO')
     photo.addElement('TYPE', content='image/png')
-    photo.addElement('BINVAL', content=base64.b64encode('hello'))
+    photo.addElement('BINVAL', content=base64.b64encode(b'hello').decode())
     stream.send(result)
 
     e = q.expect('dbus-signal', signal='AvatarRetrieved')
-    assertEquals('hello', e.args[2])
+    assertEquals(b'hello', e.args[2])
     assertEquals('image/png', e.args[3])
 
 if __name__ == '__main__':

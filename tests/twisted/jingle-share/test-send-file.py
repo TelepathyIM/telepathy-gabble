@@ -5,7 +5,7 @@ from file_transfer_helper import SendFileTest, ReceiveFileTest, \
 from config import JINGLE_FILE_TRANSFER_ENABLED
 
 if not JINGLE_FILE_TRANSFER_ENABLED:
-    print "NOTE: built with --disable-file-transfer or --disable-voip"
+    print("NOTE: built with --disable-file-transfer or --disable-voip")
     raise SystemExit(77)
 
 if __name__ == '__main__':

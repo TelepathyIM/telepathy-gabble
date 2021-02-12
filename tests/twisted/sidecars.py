@@ -12,8 +12,8 @@ from config import PLUGINS_ENABLED
 TEST_PLUGIN_IFACE = cs.PREFIX + ".Gabble.Plugin.Test"
 
 if not PLUGINS_ENABLED:
-    print "NOTE: built without --enable-plugins, not testing plugins"
-    print "      (but still testing failing calls to EnsureSidecar)"
+    print("NOTE: built without --enable-plugins, not testing plugins")
+    print("      (but still testing failing calls to EnsureSidecar)")
 
 def test(q, bus, conn, stream):
     # Request a sidecar thate we support before we're connected; it should just

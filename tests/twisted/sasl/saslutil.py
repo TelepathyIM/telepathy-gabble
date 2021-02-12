@@ -40,7 +40,7 @@ class SaslEventAuthenticator(XmppAuthenticator):
         reply = domish.Element((ns.NS_XMPP_SASL, 'success'))
 
         if data is not None:
-            reply.addContent(b64encode(data))
+            reply.addContent(b64encode(data).decode())
 
         self.xmlstream.send(reply)
         self.authenticated=True
@@ -48,7 +48,7 @@ class SaslEventAuthenticator(XmppAuthenticator):
 
     def challenge(self, data):
         reply = domish.Element((ns.NS_XMPP_SASL, 'challenge'))
-        reply.addContent(b64encode(data))
+        reply.addContent(b64encode(data).decode())
         self.xmlstream.send(reply)
 
     def auth(self, auth):

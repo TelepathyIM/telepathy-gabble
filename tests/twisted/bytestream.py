@@ -142,8 +142,10 @@ class Bytestream(object):
         assert str(proto) == self.get_ns()
 
 ##### XEP-0065: SOCKS5 Bytestreams #####
+import os
 def listen_socks5(q):
-    for port in range(5000, 5100):
+    ctr = os.environ.get('CHECK_TWISTED_RANGE', '5000,5100')
+    for port in range(*map(int,ctr.split(','))):
         try:
             reactor.listenTCP(port, S5BFactory(q.append), interface='localhost')
         except CannotListenError:
@@ -213,31 +215,31 @@ class BytestreamS5B(Bytestream):
 
     def _wait_auth_request(self):
         event = self.q.expect('s5b-data-received')
-        assert event.data == '\x05\x01\x00' # version 5, 1 auth method, no auth
+        assert event.data == b'\x05\x01\x00' # version 5, 1 auth method, no auth
         self.transport = event.transport
 
     def _send_auth_reply(self):
-        self.transport.write('\x05\x00') # version 5, no auth
+        self.transport.write(b'\x05\x00') # version 5, no auth
 
     def _compute_hash_domain(self):
         # sha-1(sid + initiator + target)
         unhashed_domain = self.stream_id + self.initiator + self.target
-        return hashlib.sha1(unhashed_domain).hexdigest()
+        return hashlib.sha1(unhashed_domain.encode()).hexdigest().encode()
 
     def _wait_connect_cmd(self):
         event = self.q.expect('s5b-data-received', transport=self.transport)
         # version 5, connect, reserved, domain type
-        expected_connect = '\x05\x01\x00\x03'
-        expected_connect += chr(40) # len (SHA-1)
+        expected_connect = b'\x05\x01\x00\x03'
+        expected_connect += b'\050' # 050 = x28 = 40 - len of SHA-1
         expected_connect += self._compute_hash_domain()
-        expected_connect += '\x00\x00' # port
-        assert event.data == expected_connect
+        expected_connect += b'\x00\x00' # port
+        assert event.data == expected_connect, event.data
 
     def _send_connect_reply(self):
-        connect_reply = '\x05\x00\x00\x03'
-        connect_reply += chr(40) # len (SHA-1)
+        connect_reply = b'\x05\x00\x00\x03'
+        connect_reply += b'\050' # len (SHA-1)
         connect_reply += self._compute_hash_domain()
-        connect_reply += '\x00\x00' # port
+        connect_reply += b'\x00\x00' # port
         self.transport.write(connect_reply)
 
     def _check_s5b_reply(self, iq):
@@ -286,27 +288,27 @@ class BytestreamS5B(Bytestream):
 
     def _send_auth_cmd(self):
         #version 5, 1 auth method, no auth
-        self.transport.write('\x05\x01\x00')
+        self.transport.write(b'\x05\x01\x00')
 
     def _wait_auth_reply(self):
         event = self.q.expect('s5b-data-received')
-        assert event.data == '\x05\x00' # version 5, no auth
+        assert event.data == b'\x05\x00' # version 5, no auth
 
     def _send_connect_cmd(self):
         # version 5, connect, reserved, domain type
-        connect = '\x05\x01\x00\x03'
-        connect += chr(40) # len (SHA-1)
+        connect = b'\x05\x01\x00\x03'
+        connect += bytes([40]) # len (SHA-1)
         connect += self._compute_hash_domain()
-        connect += '\x00\x00' # port
+        connect += b'\x00\x00' # port
         self.transport.write(connect)
 
     def _wait_connect_reply(self):
         event = self.q.expect('s5b-data-received')
         # version 5, succeed, reserved, domain type
-        expected_reply = '\x05\x00\x00\x03'
-        expected_reply += chr(40) # len (SHA-1)
+        expected_reply = b'\x05\x00\x00\x03'
+        expected_reply += bytes([40]) # len (SHA-1)
         expected_reply += self._compute_hash_domain()
-        expected_reply += '\x00\x00' # port
+        expected_reply += b'\x00\x00' # port
         assert event.data == expected_reply
 
     def _socks5_connect(self, host, port):
@@ -354,7 +356,7 @@ class BytestreamS5B(Bytestream):
         assert stream_host_found
 
     def get_data(self, size=0):
-        binary = ''
+        binary = b''
         received = False
         while not received:
             e = self.q.expect('s5b-data-received', transport=self.transport)
@@ -392,12 +394,12 @@ class BytestreamS5BPidgin(BytestreamS5B):
     """Simulate buggy S5B implementation (as Pidgin's one)"""
     def _send_connect_reply(self):
         # version 5, ok, reserved, domain type
-        connect_reply = '\x05\x00\x00\x03'
+        connect_reply = b'\x05\x00\x00\x03'
         # I'm Pidgin, why should I respect SOCKS5 XEP?
-        domain = '127.0.0.1'
-        connect_reply += chr(len(domain))
+        domain = b'127.0.0.1'
+        connect_reply += bytes([len(domain)])
         connect_reply += domain
-        connect_reply += '\x00\x00' # port
+        connect_reply += b'\x00\x00' # port
         self.transport.write(connect_reply)
 
 class BytestreamS5BCannotConnect(BytestreamS5B):
@@ -431,12 +433,12 @@ class BytestreamS5BWrongHash(BytestreamS5B):
 
     def _send_connect_cmd(self):
         # version 5, connect, reserved, domain type
-        connect = '\x05\x01\x00\x03'
+        connect = b'\x05\x01\x00\x03'
         # send wrong hash as domain
-        domain = 'this is wrong'
-        connect += chr(len(domain))
+        domain = b'this is wrong'
+        connect += bytes([len(domain)])
         connect += domain
-        connect += '\x00\x00' # port
+        connect += b'\x00\x00' # port
         self.transport.write(connect)
 
     def _socks5_connect(self, host, port):
@@ -549,7 +551,7 @@ class BytestreamS5BRelayBugged(BytestreamS5BRelay):
     """Simulate bugged ejabberd (< 2.0.2) proxy sending wrong CONNECT reply"""
     def _send_connect_reply(self):
         # send a 6 bytes wrong reply
-        connect_reply = '\x05\x00\x00\x00\x00\x00'
+        connect_reply = b'\x05\x00\x00\x00\x00\x00'
         self.transport.write(connect_reply)
 
 class S5BProtocol(Protocol):
@@ -649,7 +651,7 @@ class BytestreamIBB(Bytestream):
     def get_data(self, size=0):
         # wait for IBB stanza. Gabble always uses IQ
 
-        binary = ''
+        binary = b''
         received = False
         while not received:
             ibb_event = self.q.expect('stream-iq', query_ns=ns.IBB)
@@ -701,7 +703,7 @@ class BytestreamIBBMsg(BytestreamIBB):
         data_node = message.addElement((ns.IBB, 'data'))
         data_node['sid'] = self.stream_id
         data_node['seq'] = str(self.seq)
-        data_node.addContent(base64.b64encode(data))
+        data_node.addContent(base64.b64encode(data).decode())
         self.stream.send(message)
 
     def _wait_data_event(self):
@@ -717,11 +719,11 @@ class BytestreamIBBMsg(BytestreamIBB):
 
 class BytestreamIBBIQ(BytestreamIBB):
     def _send(self, from_, to, data):
-        id = random.randint(0, sys.maxint)
+        id = random.randint(0, sys.maxsize)
 
         iq = elem_iq(self.stream, 'set', from_=from_, to=to, id=str(id))(
             elem('data', xmlns=ns.IBB, sid=self.stream_id, seq=str(self.seq))(
-                (unicode(base64.b64encode(data)))))
+                (base64.b64encode(data).decode())))
 
         self.stream.send(iq)
 

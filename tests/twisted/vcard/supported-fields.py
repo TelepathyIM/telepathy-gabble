@@ -25,7 +25,7 @@ import constants as cs
 
 PARAMS_EXACT = cs.CONTACT_INFO_FIELD_FLAG_PARAMETERS_EXACT
 OVERWRITTEN_BY_NICKNAME = cs.CONTACT_INFO_FIELD_FLAG_OVERWRITTEN_BY_NICKNAME
-UNLIMITED = 0xffffffffL
+UNLIMITED = 0xffffffff
 
 def types(s):
     ret = ['type=%s' % t for t in s.split()]

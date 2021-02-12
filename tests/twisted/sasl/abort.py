@@ -10,9 +10,9 @@ from saslutil import SaslEventAuthenticator, connect_and_get_sasl_channel, \
 
 JID = "test@example.org"
 PASSWORD = "pass"
-EXCHANGE = [("", "remote challenge"),
-            ("Another step", "Here we go"),
-            ("local response", "")]
+EXCHANGE = [(b"", b"remote challenge"),
+            (b"Another step", b"Here we go"),
+            (b"local response", b"")]
 MECHANISMS = ["PLAIN", "DIGEST-MD5", "ABORT-TEST"]
 
 def test_abort_early(q, bus, conn, stream):
@@ -57,7 +57,7 @@ def test_disconnect_mid(q, bus, conn, stream):
                   EventPattern('dbus-return', method='Disconnect'))
 
 def test_abort_connected(q, bus, conn, stream):
-    initial_response = '\0' + JID.split('@')[0] + '\0' + PASSWORD
+    initial_response = str('\0' + JID.split('@')[0] + '\0' + PASSWORD).encode()
     chan, authenticator = start_mechanism(q, bus, conn,
         mechanism='PLAIN',
         initial_response=initial_response)

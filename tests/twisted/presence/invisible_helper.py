@@ -136,12 +136,12 @@ class SharedStatusStream(XmppXmlStream):
             iq_type = "result"
         status, show, invisible = self.shared_status
         elems = []
-        elems.append(elem('status')(unicode(status)))
-        elems.append(elem('show')(unicode(show)))
+        elems.append(elem('status')(status))
+        elems.append(elem('show')(show))
         for show, statuses in self.shared_status_lists.items():
             lst = []
             for _status in statuses:
-                lst.append(elem('status')(unicode(_status)))
+                lst.append(elem('status')(_status))
             elems.append(elem('status-list', show=show)(*lst))
         elems.append(elem('invisible', value=invisible)())
 

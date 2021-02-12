@@ -17,7 +17,7 @@ from caps_helper import send_disco_reply
 
 sample_parameters = dbus.Dictionary({
     's': 'hello',
-    'ay': dbus.ByteArray('hello'),
+    'ay': dbus.ByteArray(b'hello'),
     'u': dbus.UInt32(123),
     'i': dbus.Int32(-123),
     }, signature='sv')
@@ -213,7 +213,7 @@ def test(q, bus, conn, stream, bytestream_cls, access_control):
 
     _, disco_event = q.expect_many(
         EventPattern('dbus-signal', signal='PresencesChanged',
-            args = [{alice_handle: (2L, u'available', u'')}]),
+            args = [{alice_handle: (2, u'available', u'')}]),
         EventPattern('stream-iq', to='alice@localhost/Test',
             query_ns=ns.DISCO_INFO),
         )

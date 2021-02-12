@@ -15,7 +15,7 @@ from twisted.words.xish import xpath
 
 sample_parameters = dbus.Dictionary({
     's': 'hello',
-    'ay': dbus.ByteArray('hello'),
+    'ay': dbus.ByteArray(b'hello'),
     'u': dbus.UInt32(123),
     'i': dbus.Int32(-123),
     }, signature='sv')
@@ -28,7 +28,7 @@ def test(q, bus, conn, stream, bytestream_cls,
         return
 
     if access_control == cs.SOCKET_ACCESS_CONTROL_CREDENTIALS:
-        print "Skip Socket_Access_Control_Credentials (fdo #45445)"
+        print("Skip Socket_Access_Control_Credentials (fdo #45445)")
         return
 
     iq_event, disco_event = q.expect_many(
@@ -136,7 +136,7 @@ def test(q, bus, conn, stream, bytestream_cls,
     assert props[cs.REQUESTED] == False
     assert props[cs.TARGET_ID] == 'chat@conf.localhost'
     assert props[cs.STREAM_TUBE_SERVICE] == 'echo'
-    assert props[cs.TUBE_PARAMETERS] == {'s': 'hello', 'ay': 'hello', 'u': 123, 'i': -123}
+    assert props[cs.TUBE_PARAMETERS] == {'s': 'hello', 'ay': b'hello', 'u': 123, 'i': -123}
     assert access_control in \
             props[cs.STREAM_TUBE_SUPPORTED_SOCKET_TYPES][address_type]
 
@@ -157,12 +157,14 @@ def test(q, bus, conn, stream, bytestream_cls,
             args=[2]))
 
     address = accept_return_event.value[0]
+    if isinstance(address, bytes):
+        address = address.decode()
 
     socket_event, si_event, conn_id = t.connect_to_cm_socket(q, 'chat@conf.localhost/bob',
         address_type, address, access_control, access_control_param)
 
     protocol = socket_event.protocol
-    protocol.sendData("hello initiator")
+    protocol.sendData(b"hello initiator")
 
     def accept_tube_si_connection():
         bytestream, profile = create_from_si_offer(stream, q, bytestream_cls, si_event.stanza,
@@ -187,12 +189,12 @@ def test(q, bus, conn, stream, bytestream_cls,
     bytestream = accept_tube_si_connection()
 
     binary = bytestream.get_data()
-    assert binary == 'hello initiator'
+    assert binary == b'hello initiator'
 
     # reply on the socket
-    bytestream.send_data('hi joiner!')
+    bytestream.send_data(b'hi joiner!')
 
-    q.expect('socket-data', protocol=protocol, data="hi joiner!")
+    q.expect('socket-data', protocol=protocol, data=b"hi joiner!")
 
     # peer closes the bytestream
     bytestream.close()

@@ -68,6 +68,8 @@ def test_temporary_error(q, bus, conn, stream):
 
     assert delivery_echo[1]['content-type'] == "text/plain", delivery_echo
     assert delivery_echo[1]['content'] == message_body, delivery_echo
+    # Expect another delivery error
+    message_received = q.expect('dbus-signal', signal='MessageReceived')
 
 
 def test_permanent_error(q, bus, conn, stream):

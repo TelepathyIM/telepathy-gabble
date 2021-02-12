@@ -1,4 +1,4 @@
-twisted_jingle_tests = files(
+twisted_tests += files(
   'call-basics.py',
   'call-codecoffer.py',
   'call-content-adding-removal.py',

@@ -13,7 +13,7 @@ import constants as cs
 from config import VOIP_ENABLED
 
 if not VOIP_ENABLED:
-    print "NOTE: built with --disable-voip"
+    print("NOTE: built with --disable-voip")
     raise SystemExit(77)
 
 def test(q, bus, conn, stream):

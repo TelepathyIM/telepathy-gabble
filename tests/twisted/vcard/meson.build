@@ -1,4 +1,4 @@
-twisted_vcard_tests = files(
+twisted_tests += files(
   'clear-avatar.py',
   'disconnect-during-pep.py',
   'get-contact-info.py',

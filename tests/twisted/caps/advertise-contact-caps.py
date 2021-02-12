@@ -17,7 +17,7 @@ import ns
 from config import FILE_TRANSFER_ENABLED, VOIP_ENABLED
 
 if not VOIP_ENABLED:
-    print "NOTE: built with --disable-voip"
+    print("NOTE: built with --disable-voip")
     raise SystemExit(77)
 
 def noop_presence_update(q, stream):

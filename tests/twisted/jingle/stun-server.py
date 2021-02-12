@@ -18,7 +18,7 @@ import ns
 from config import GOOGLE_RELAY_ENABLED, VOIP_ENABLED
 
 if not VOIP_ENABLED:
-    print "NOTE: built with --disable-voip"
+    print("NOTE: built with --disable-voip")
     raise SystemExit(77)
 
 def test_stun_server(stun_server_prop, expected_stun_servers=None):
@@ -183,5 +183,5 @@ if __name__ == '__main__':
             expected_stun_servers=[('5.4.3.2', 3838)]),
             protocol=GoogleXmlStream)
     else:
-        print "NOTE: built with --disable-google-relay; omitting Call tests with Google relay"
+        print("NOTE: built with --disable-google-relay; omitting Call tests with Google relay")
 

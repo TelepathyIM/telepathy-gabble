@@ -11,10 +11,10 @@ import constants as cs
 import ns
 
 def validate_pep_update(pep_update, expected_nickname):
-    publish = pep_update.query.elements(uri=ns.PUBSUB, name='publish').next()
+    publish = next(pep_update.query.elements(uri=ns.PUBSUB, name='publish'))
     assertEquals(ns.NICK, publish['node'])
-    item = publish.elements(uri=ns.PUBSUB, name='item').next()
-    nick = item.elements(uri=ns.NICK, name='nick').next()
+    item = next(publish.elements(uri=ns.PUBSUB, name='item'))
+    nick = next(item.elements(uri=ns.NICK, name='nick'))
 
     if expected_nickname is not None:
         assertEquals(expected_nickname, nick.children[0])
@@ -31,7 +31,7 @@ def test(q, bus, conn, stream):
     acknowledge_iq(stream, pep_update.stanza)
 
     def check(vCard):
-        nickname = vCard.elements(uri=ns.VCARD_TEMP, name='NICKNAME').next()
+        nickname = next(vCard.elements(uri=ns.VCARD_TEMP, name='NICKNAME'))
         assertEquals('lala', nickname.children[0])
     expect_and_handle_set_vcard(q, stream, check=check)
 

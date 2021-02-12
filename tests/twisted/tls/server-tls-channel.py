@@ -64,7 +64,7 @@ class TlsAuthenticator(XmppAuthenticator):
     def tlsAuth(self, auth):
         with open(CA_KEY, 'rb') as f:
             pem_key = f.read()
-            pkey = crypto.load_privatekey(crypto.FILETYPE_PEM, pem_key, "")
+            pkey = crypto.load_privatekey(crypto.FILETYPE_PEM, pem_key, b"")
 
         with open(CA_CERT, 'rb') as f:
             pem_cert = f.read()

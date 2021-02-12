@@ -18,7 +18,7 @@ def main():
     for i in xrange(0, 2000):
         print i
         exec_test(test)
-    print "we partied like it's %i" % i
+    print("we partied like it's %i" % i)
 
 if __name__ == '__main__':
     main()

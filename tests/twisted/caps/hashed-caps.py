@@ -38,7 +38,7 @@ from caps_helper import (
 from config import VOIP_ENABLED
 
 if not VOIP_ENABLED:
-    print "NOTE: built with --disable-voip"
+    print("NOTE: built with --disable-voip")
     raise SystemExit(77)
 
 some_identities = [
@@ -325,14 +325,14 @@ def test_39464(q, bus, conn, stream):
     sync_stream(q, stream)
 
 def test(q, bus, conn, stream):
-    test_hash(q, bus, conn, stream, 'bob@foo.com/Foo', 2L, 'http://telepathy.freedesktop.org/fake-client')
-    test_hash(q, bus, conn, stream, 'bob2@foo.com/Foo', 3L, 'http://telepathy.freedesktop.org/fake-client2')
+    test_hash(q, bus, conn, stream, 'bob@foo.com/Foo', 2, 'http://telepathy.freedesktop.org/fake-client')
+    test_hash(q, bus, conn, stream, 'bob2@foo.com/Foo', 3, 'http://telepathy.freedesktop.org/fake-client2')
 
     test_two_clients(q, bus, conn, stream, 'user1@example.com/Res',
-            'user2@example.com/Res', 4L, 5L,
+            'user2@example.com/Res', 4, 5,
             'http://telepathy.freedesktop.org/fake-client3', 0)
     test_two_clients(q, bus, conn, stream, 'user3@example.com/Res',
-            'user4@example.com/Res', 6L, 7L,
+            'user4@example.com/Res', 6, 7,
             'http://telepathy.freedesktop.org/fake-client4', 1)
 
     test_39464(q, bus, conn, stream)

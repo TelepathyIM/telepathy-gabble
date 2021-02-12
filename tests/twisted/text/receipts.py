@@ -132,7 +132,7 @@ def replying_to_requests(q, bus, conn, stream):
         ))
     q.expect('dbus-signal', signal='MessageReceived')
     e = q.expect('stream-message', to=jid)
-    receipt = e.stanza.elements(uri=ns.RECEIPTS, name='received').next()
+    receipt = next(e.stanza.elements(uri=ns.RECEIPTS, name='received'))
     assertEquals('beta', receipt['id'])
 
     # We would like requests in messages without id=''s not to crash Gabble,

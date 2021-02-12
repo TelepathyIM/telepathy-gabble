@@ -163,10 +163,10 @@ def compute_caps_hash(identities, features, dataforms):
     m = hashlib.sha1()
     S = u'<'.join(components)
     m.update(S.encode('utf-8'))
-    return base64.b64encode(m.digest())
+    return base64.b64encode(m.digest()).decode()
 
 def add_data_forms(root, dataforms):
-    for type, fields in dataforms.iteritems():
+    for type, fields in dataforms.items():
         x = root.addElement((ns.X_DATA, 'x'))
         x['type'] = 'result'
 
@@ -175,7 +175,7 @@ def add_data_forms(root, dataforms):
         field['type'] = 'hidden'
         field.addElement('value', content=type)
 
-        for var, values in fields.iteritems():
+        for var, values in fields.items():
             field = x.addElement('field')
             field['var'] = var
 

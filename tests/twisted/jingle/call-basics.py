@@ -17,7 +17,7 @@ import ns
 from config import VOIP_ENABLED
 
 if not VOIP_ENABLED:
-    print "NOTE: built with --disable-voip"
+    print("NOTE: built with --disable-voip")
     raise SystemExit(77)
 
 class CallBasicsTest(CallTest):
@@ -235,7 +235,7 @@ class CallBasicsTest(CallTest):
             cstream.RequestReceiving(remote_handle, False,
                     dbus_interface = cs.CALL_STREAM)
             assert can_change_direction
-        except dbus.DBusException, e:
+        except dbus.DBusException as e:
             assertEquals(cs.NOT_CAPABLE, e.get_dbus_name())
             assert not can_change_direction
 
@@ -246,7 +246,7 @@ class CallBasicsTest(CallTest):
                     EventPattern('stream-iq',
                         predicate=jp.action_predicate('content-modify')))
             assertEquals(cs.CALL_STREAM_FLOW_STATE_PENDING_STOP, ret[0].args[0])
-            assert ret[1].args[0].has_key(remote_handle)
+            assert remote_handle in ret[1].args[0]
 
             cstream.CompleteReceivingStateChange(
                     cs.CALL_STREAM_FLOW_STATE_STOPPED,
@@ -273,7 +273,7 @@ class CallBasicsTest(CallTest):
             cstream.RequestReceiving(remote_handle, True,
                     dbus_interface = cs.CALL_STREAM)
             assert can_change_direction
-        except dbus.DBusException, e:
+        except dbus.DBusException as e:
             assertEquals(cs.NOT_CAPABLE, e.get_dbus_name())
             assert not can_change_direction
 
@@ -285,7 +285,7 @@ class CallBasicsTest(CallTest):
                         predicate=jp.action_predicate('content-modify')))
             assertEquals(cs.CALL_STREAM_FLOW_STATE_PENDING_START,
                     ret[0].args[0])
-            assert ret[1].args[0].has_key(remote_handle)
+            assert remote_handle in ret[1].args[0]
             assertEquals(cs.CALL_SENDING_STATE_PENDING_SEND,
                     ret[1].args[0][remote_handle])
 
@@ -296,7 +296,7 @@ class CallBasicsTest(CallTest):
                     EventPattern('dbus-signal', signal='ReceivingStateChanged'),
                     EventPattern('dbus-signal', signal='RemoteMembersChanged'))
             assertEquals(cs.CALL_STREAM_FLOW_STATE_STARTED, ret[0].args[0])
-            assert ret[1].args[0].has_key(remote_handle)
+            assert remote_handle in ret[1].args[0]
             assertEquals(cs.CALL_SENDING_STATE_SENDING,
                     ret[1].args[0][remote_handle])
 
@@ -317,7 +317,7 @@ class CallBasicsTest(CallTest):
                     EventPattern('dbus-signal', signal='ReceivingStateChanged'),
                     EventPattern('dbus-signal', signal='RemoteMembersChanged'))
             assertEquals(cs.CALL_STREAM_FLOW_STATE_PENDING_STOP, ret[0].args[0])
-            assert ret[1].args[0].has_key(remote_handle)
+            assert remote_handle in ret[1].args[0]
             assertEquals(cs.CALL_SENDING_STATE_NONE,
                     ret[1].args[0][remote_handle])
 
@@ -333,7 +333,7 @@ class CallBasicsTest(CallTest):
                     EventPattern('dbus-signal', signal='RemoteMembersChanged'))
             assertEquals(cs.CALL_STREAM_FLOW_STATE_PENDING_START,
                     ret[0].args[0])
-            assert ret[1].args[0].has_key(remote_handle)
+            assert remote_handle in ret[1].args[0]
             assertEquals(cs.CALL_SENDING_STATE_SENDING,
                     ret[1].args[0][remote_handle])
 
@@ -345,7 +345,7 @@ class CallBasicsTest(CallTest):
 
         try:
             self.test_content_addition()
-        except DBusException, e:
+        except DBusException as e:
             assertEquals(cs.NOT_AVAILABLE, e.get_dbus_name())
             assert not jp.can_do_video()
 

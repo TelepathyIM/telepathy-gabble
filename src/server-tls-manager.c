@@ -164,7 +164,8 @@ complete_verify (GabbleServerTLSManager *self)
           g_object_ref (self->priv->channel));
     }
 
-  g_simple_async_result_complete (self->priv->async_result);
+  if (self->priv->async_result != NULL)
+    g_simple_async_result_complete (self->priv->async_result);
 
   /* Reset to initial state */
   tp_clear_pointer (&self->priv->peername, g_free);
@@ -343,6 +344,11 @@ gabble_server_tls_manager_verify_async (WockyTLSHandler *handler,
   GSimpleAsyncResult *result;
 #if defined(WOCKY_API_VERSION) && WOCKY_API_VERSION >= WOCKY_API_VER_0_1
   const gchar *peername = NULL;
+  GSocketConnectable *identity;
+
+  identity = g_tls_client_connection_get_server_identity (G_TLS_CLIENT_CONNECTION (tls_session));
+  if (G_IS_NETWORK_ADDRESS (identity))
+    peername = g_network_address_get_hostname (G_NETWORK_ADDRESS (identity));
 #endif
 
   g_return_if_fail (self->priv->async_result == NULL);

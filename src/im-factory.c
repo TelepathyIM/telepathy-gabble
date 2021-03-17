@@ -213,7 +213,7 @@ im_factory_message_cb (
   gint state;
   TpChannelTextSendError send_error;
   TpDeliveryStatus delivery_status;
-  const gchar *delivery_token;
+  const gchar *delivery_token = NULL;
   gboolean create_if_missing;
   gboolean sent;
 

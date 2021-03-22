@@ -1446,8 +1446,10 @@ got_roster_iq (GabbleRoster *roster,
 
   if (query_node)
     {
+      const gchar *ver = wocky_node_get_attribute (query_node, "ver");
       process_roster (roster, query_node);
-      if (roster->priv->rcache != NULL)
+
+      if (roster->priv->rcache != NULL && ver != NULL && strlen (ver) != 0)
         {
           const gchar *user = conn_util_get_bare_self_jid (priv->conn);
           DEBUG ("updating roster cache for %s", user);

@@ -725,7 +725,7 @@ roster_cache_update_roster (RosterCache *self,
           while (wocky_node_iter_next (&jter, &group))
             {
               if (!roster_cache_insert (self,
-                  "INSERT INTO groups(user, jid, group) VALUES(?, ?, ?)",
+                  "INSERT INTO groups(user, jid, grp) VALUES(?, ?, ?)",
                   user, jid, group->content, NULL, NULL))
                 goto err;
             }

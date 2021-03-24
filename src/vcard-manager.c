@@ -672,10 +672,11 @@ status_changed_cb (GObject *object,
     {
       gchar *alias;
       GabbleConnectionAliasSource alias_src;
+      TpHandle handle = tp_base_connection_get_self_handle (base);
+      GabbleVCardCacheEntry *entry = cache_entry_get (self, handle);
 
       /* if we have a better alias, patch it into our vCard on the server */
-      alias_src = _gabble_connection_get_cached_alias (conn,
-          tp_base_connection_get_self_handle (base), &alias);
+      alias_src = _gabble_connection_get_cached_alias (conn, handle, &alias);
 
       if (alias_src >= GABBLE_CONNECTION_ALIAS_FROM_VCARD)
         {
@@ -686,10 +687,12 @@ status_changed_cb (GObject *object,
 
       g_free (alias);
 
+      if (entry && entry->vcard_node)
+        return;
+
       /* FIXME: we happen to know that synchronous errors can't happen */
-      gabble_vcard_manager_request (self,
-          tp_base_connection_get_self_handle (base), 0,
-          initial_request_cb, NULL, (GObject *) self);
+      gabble_vcard_manager_request (self, handle, 0, initial_request_cb, NULL,
+          (GObject *) self);
     }
 }
 

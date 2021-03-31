@@ -229,11 +229,7 @@ gabble_roster_finalize (GObject *object)
   if (priv->version != NULL)
     g_string_free (priv->version, TRUE);
 
-  if (priv->rcache != NULL)
-    {
-      roster_cache_free_shared ();
-      priv->rcache = NULL;
-    }
+  g_clear_object (&priv->rcache);
 
   G_OBJECT_CLASS (gabble_roster_parent_class)->finalize (object);
 }

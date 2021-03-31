@@ -37,6 +37,7 @@
 #include "extensions/extensions.h"
 
 #include "protocol.h"
+#include "roster-cache.h"
 
 G_DEFINE_TYPE(GabbleConnectionManager,
     gabble_connection_manager,
@@ -70,6 +71,7 @@ static void
 gabble_connection_manager_finalize (GObject *object)
 {
   wocky_caps_cache_free_shared ();
+  roster_cache_free_shared ();
   gabble_debug_free ();
 
   G_OBJECT_CLASS (gabble_connection_manager_parent_class)->finalize (object);

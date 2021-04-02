@@ -117,6 +117,8 @@ if has_twisted.returncode() == 0 and has_pydbus.returncode() == 0
     test('@0@'.format(t),
         python,
 	args: [t],
+        # Explicit dependency on gabble binary and all plugins, including test_lib
+        depends: [ tp_gabble_debug, plugins, test_lib ],
         env: [
           'PYTHONPATH=@0@:@1@:@0@/jingle'.format(meson.current_source_dir(),meson.current_build_dir()),
           'CHECK_TWISTED_PORT=@0@'.format(6666 + tnum),

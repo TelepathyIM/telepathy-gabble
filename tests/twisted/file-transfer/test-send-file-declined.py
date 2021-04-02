@@ -8,7 +8,7 @@ import ns
 from config import FILE_TRANSFER_ENABLED
 
 if not FILE_TRANSFER_ENABLED:
-    print "NOTE: built with --disable-file-transfer"
+    print("NOTE: built with --disable-file-transfer")
     raise SystemExit(77)
 
 class SendFileDeclinedTest(SendFileTest):
@@ -42,7 +42,7 @@ class SendFileDeclinedTest(SendFileTest):
         # cs.NOT_AVAILABLE
         try:
             assert self.provide_file()
-        except dbus.DBusException, e:
+        except dbus.DBusException as e:
             assert e.get_dbus_name() == cs.NOT_AVAILABLE
 
         # stop test

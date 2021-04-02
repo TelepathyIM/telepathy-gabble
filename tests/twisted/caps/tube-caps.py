@@ -90,8 +90,9 @@ go_fixed_properties = dbus.Dictionary({
 
 client = 'http://telepathy.freedesktop.org/fake-client'
 
+from servicetest import sort_d
 def assertSameElements(a, b):
-    assertEquals(sorted(a), sorted(b))
+    assertEquals(sort_d(a), sort_d(b))
 
 def receive_caps(q, conn, stream, contact, contact_handle, features,
                  expected_caps, expect_disco=True, expect_ccc=True):

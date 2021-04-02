@@ -20,7 +20,7 @@ import ns
 from config import VOIP_ENABLED
 
 if not VOIP_ENABLED:
-    print "NOTE: built with --disable-voip"
+    print("NOTE: built with --disable-voip")
     raise SystemExit(77)
 
 class CallTest(object):
@@ -330,7 +330,7 @@ class CallTest(object):
             sorted(properties.keys()))
 
         # Remote member is the target
-        assertEquals([self.peer_handle], properties["CallMembers"].keys())
+        assertEquals([self.peer_handle], list(properties["CallMembers"].keys()))
         assertEquals(0, properties["CallMembers"][self.peer_handle])
 
         # No Hardware Streaming for you
@@ -410,7 +410,7 @@ class CallTest(object):
         try:
             contents[0].UpdateLocalMediaDescription(mds[0],
                     dbus_interface=cs.CALL_CONTENT_IFACE_MEDIA)
-        except DBusException, e:
+        except DBusException as e:
             if e.get_dbus_name() != cs.NOT_AVAILABLE:
                 raise e
         else:
@@ -557,7 +557,7 @@ class CallTest(object):
             try:
                 endpoint.SetSelectedCandidatePair(candidate1, candidate1,
                     dbus_interface=cs.CALL_STREAM_ENDPOINT)
-            except DBusException, e:
+            except DBusException as e:
                 if e.get_dbus_name() != cs.INVALID_ARGUMENT:
                     raise e
             else:

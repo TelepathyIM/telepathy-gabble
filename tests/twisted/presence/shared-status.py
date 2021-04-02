@@ -363,7 +363,7 @@ def test_shared_status_chat(q, bus, conn, stream):
 
     try:
         conn.SimplePresence.SetPresence('chat', 'This is not going to work')
-    except dbus.DBusException, e:
+    except dbus.DBusException as e:
         assert e.get_dbus_name() == cs.NOT_AVAILABLE
     else:
         assert False

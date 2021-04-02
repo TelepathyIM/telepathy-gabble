@@ -16,7 +16,7 @@ import ns
 from config import VOIP_ENABLED
 
 if not VOIP_ENABLED:
-    print "NOTE: built with --disable-voip"
+    print("NOTE: built with --disable-voip")
     raise SystemExit(77)
 
 def test(q, bus, conn, stream):
@@ -60,7 +60,7 @@ def run_test(q, bus, conn, stream, jt, decloak_allowed):
                 name=cs.OFFLINE)
 
 if __name__ == '__main__':
-    print "FIXME: needs to be ported to Call1"
+    print("FIXME: needs to be ported to Call1")
     raise SystemExit(77)
 
     exec_test(test, timeout=10)

@@ -77,7 +77,7 @@ gabble_plugin_connection_add_sidecar_own_caps (
 
   g_return_val_if_fail (iface != NULL, NULL);
   g_return_val_if_fail (iface->add_sidecar_own_caps != NULL, NULL);
-  
+
   return iface->add_sidecar_own_caps (plugin_connection, cap_set, identities);
 }
 
@@ -93,7 +93,7 @@ gabble_plugin_connection_add_sidecar_own_caps_full (
 
   g_return_val_if_fail (iface != NULL, NULL);
   g_return_val_if_fail (iface->add_sidecar_own_caps_full != NULL, NULL);
-  
+
   return iface->add_sidecar_own_caps_full (plugin_connection, cap_set, identities,
       data_forms);
 }

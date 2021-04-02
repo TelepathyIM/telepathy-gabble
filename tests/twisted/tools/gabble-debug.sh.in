@@ -1,0 +1,58 @@
+#!/bin/sh
+
+cd "@abs_top_builddir@/tests/twisted/tools"
+
+GABBLE_DEBUG=all GIBBER_DEBUG=all WOCKY_DEBUG=all
+export GABBLE_DEBUG
+export GIBBER_DEBUG
+export WOCKY_DEBUG
+GABBLE_TIMING=1
+export GABBLE_TIMING
+GABBLE_PLUGIN_DIR="@abs_top_builddir@/plugins:@abs_top_builddir@/plugins/console"
+export GABBLE_PLUGIN_DIR
+WOCKY_CAPS_CACHE=:memory:
+export WOCKY_CAPS_CACHE
+WOCKY_CAPS_CACHE_SIZE=50
+export WOCKY_CAPS_CACHE_SIZE
+G_MESSAGES_DEBUG=all
+export G_MESSAGES_DEBUG
+ulimit -c unlimited
+exec >> gabble-testing.log 2>&1
+
+G_SLICE=debug-blocks
+export G_SLICE
+
+if test -n "$GABBLE_TEST_VALGRIND"; then
+        G_DEBUG=${G_DEBUG:+"${G_DEBUG},"}gc-friendly
+        export G_DEBUG
+        G_SLICE=${G_SLICE},always-malloc
+        export G_SLICE
+        DBUS_DISABLE_MEM_POOLS=1
+        export DBUS_DISABLE_MEM_POOLS
+        GABBLE_WRAPPER="valgrind --leak-check=full --num-callers=20"
+        GABBLE_WRAPPER="$GABBLE_WRAPPER --show-reachable=yes"
+        GABBLE_WRAPPER="$GABBLE_WRAPPER --gen-suppressions=all"
+        GABBLE_WRAPPER="$GABBLE_WRAPPER --child-silent-after-fork=yes"
+        GABBLE_WRAPPER="$GABBLE_WRAPPER --suppressions=@abs_top_srcdir@/tests/suppressions/tp-glib.supp"
+        GABBLE_WRAPPER="$GABBLE_WRAPPER --suppressions=@abs_top_srcdir@/tests/suppressions/gabble.supp"
+elif test -n "$GABBLE_TEST_REFDBG"; then
+        if test -z "$REFDBG_OPTIONS" ; then
+                REFDBG_OPTIONS="btnum=10"
+                export REFDBG_OPTIONS
+        fi
+        if test -z "$GABBLE_WRAPPER" ; then
+                GABBLE_WRAPPER="refdbg"
+        fi
+elif test -n "$GABBLE_TEST_STRACE"; then
+        GABBLE_WRAPPER="strace -o strace.log"
+elif test -n "$GABBLE_TEST_BACKTRACE"; then
+        GABBLE_WRAPPER="gdb -x @abs_top_srcdir@/tests/twisted/tools/run_and_bt.gdb"
+fi
+
+# Prevent libproxy from hitting the network for wpad configuration
+PX_MODULE_BLACKLIST=config_wpad
+export PX_MODULE_BLACKLIST
+
+G_DEBUG=fatal-warnings,fatal-criticals" ${G_DEBUG}"
+export G_DEBUG
+exec $GABBLE_WRAPPER ../telepathy-gabble-debug

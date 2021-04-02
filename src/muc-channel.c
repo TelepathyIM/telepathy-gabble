@@ -1647,9 +1647,11 @@ gabble_muc_channel_can_be_closed (GabbleMucChannel *chan)
   if (g_hash_table_size (priv->tubes) > 0)
     return FALSE;
 
+#ifdef ENABLE_VOIP
   if (priv->calls != NULL || priv->call_requests != NULL
       || priv->call_initiating)
     return FALSE;
+#endif
 
   return TRUE;
 }

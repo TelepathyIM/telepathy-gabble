@@ -1,0 +1,15 @@
+twisted_tests += files([
+  'destroy.py',
+  'ensure.py',
+  'facebook-own-message.py',
+  'initiate.py',
+  'initiate-requestotron.py',
+  'receipts.py',
+  'respawn.py',
+  'send-error.py',
+  'send-to-correct-resource.py',
+  'test-chat-state.py',
+  'test-text-delayed.py',
+  'test-text-no-body.py',
+  'test-text.py',
+  ])

@@ -1,0 +1,65 @@
+stages:
+  - style-check
+  - build
+  - test
+
+variables:
+  FEDORA_MB: registry.freedesktop.org/telepathy/telepathy-gabble/fedoraw:v1
+  DEBIAN_MB: registry.freedesktop.org/telepathy/telepathy-gabble/debtest:v1
+  DEBSTB_MB: registry.freedesktop.org/telepathy/telepathy-gabble/debstbl:v1
+  SUSELP_MB: registry.freedesktop.org/telepathy/telepathy-gabble/osuselp:v1
+  SUSETW_MB: registry.freedesktop.org/telepathy/telepathy-gabble/osusetw:v1
+  WOCKY_DEBUG: all
+  #G_MESSAGES_DEBUG: all
+
+.def_mb:
+  before_script:
+    - test -d _b || meson _b -Dgoogle-relay=true
+  cache:
+    key: "$CI_JOB_IMAGE:$CI_COMMIT_SHA"
+    paths: [ _b ]
+
+style-ck-mb:
+  extends: .def_mb
+  stage: style-check
+  image: $FEDORA_MB
+  script:
+    - ninja -C _b check
+
+build-mb:
+  extends: .def_mb
+  stage: build
+  image: $image
+  script:
+    - ninja -C _b
+  parallel:
+    matrix:
+      - image:
+        - $FEDORA_MB
+        - $DEBIAN_MB
+        #- $SUSETW_MB
+        - $DEBSTB_MB
+        - $SUSELP_MB
+
+test-mb:
+  extends: .def_mb
+  stage: test
+  image: $image
+  script:
+    - meson test -C _b
+  artifacts:
+    reports:
+    expire_in: 1 week
+    when: always
+    paths:
+      - "_b/meson-logs"
+      - "_b/tests/twisted/tools/gabble-testing.log"
+  parallel:
+    matrix:
+      - image:
+        - $FEDORA_MB
+        - $DEBIAN_MB
+        #- $SUSETW_MB
+        - $DEBSTB_MB
+        - $SUSELP_MB
+

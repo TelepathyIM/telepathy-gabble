@@ -51,8 +51,10 @@ class BlockForeverTlsAuthenticator(GabbleAuthenticator):
         self.xmlstream.addOnetimeObserver("/starttls", self.auth)
 
     def auth(self, auth):
-        proceed = domish.Element((NS_XMPP_TLS, 'proceed'))
-        self.xmlstream.send(proceed)
+        # If we send `proceed` now the xmlstream will abort upon ClientHello
+        # so let's do nothing here to make everyone wait
+        #proceed = domish.Element((NS_XMPP_TLS, 'proceed'))
+        #self.xmlstream.send(proceed)
 
         return; # auth blocks
 
@@ -76,7 +78,7 @@ def test(q, bus, conn1, conn2, stream1, stream2):
             args=[cs.CONN_STATUS_CONNECTING, cs.CSR_REQUESTED])
     q.expect('stream-authenticated')
     q.expect('dbus-signal', signal='PresencesChanged',
-        args=[{1L: (cs.PRESENCE_AVAILABLE, 'available', '')}])
+        args=[{1: (cs.PRESENCE_AVAILABLE, 'available', '')}])
     q.expect('dbus-signal', signal='StatusChanged',
             args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
 
@@ -126,7 +128,7 @@ if __name__ == '__main__':
         lambda *args, **kw:
             queue.append(Event('dbus-signal',
                                path=unwrap(kw['path']),
-                               signal=kw['member'], args=map(unwrap, args),
+                               signal=kw['member'], args=[unwrap(a) for a in args],
                                interface=kw['interface'])),
         None,       # signal name
         None,       # interface
@@ -143,6 +145,6 @@ if __name__ == '__main__':
         try:
             conn1.Disconnect()
             conn2.Disconnect()
-        except dbus.DBusException, e:
+        except dbus.DBusException as e:
             pass
 

@@ -18,7 +18,7 @@ def test(q, bus, conn, stream):
     sync_stream(q, stream)
 
     handle = conn.Properties.Get(cs.CONN, "SelfHandle")
-    call_async(q, conn.Avatars, 'SetAvatar', 'william shatner',
+    call_async(q, conn.Avatars, 'SetAvatar', b'william shatner',
         'image/x-actor-name')
 
     event = q.expect('stream-iq', iq_type='get', to=None,

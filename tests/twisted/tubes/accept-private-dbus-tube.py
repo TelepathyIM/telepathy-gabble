@@ -123,7 +123,7 @@ def test(q, bus, conn, stream, bytestream_cls, access_control):
     # try to accept using a wrong access control
     try:
         dbus_tube_iface.Accept(cs.SOCKET_ACCESS_CONTROL_PORT)
-    except dbus.DBusException, e:
+    except dbus.DBusException as e:
         assertEquals(e.get_dbus_name(), cs.INVALID_ARGUMENT)
     else:
         assert False

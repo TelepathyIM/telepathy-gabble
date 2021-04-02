@@ -37,7 +37,7 @@ TRANSIENT_PHONE = ['client/phone/en/fleeting visit']
 BANANAPHONE = ['client/phone/en/banana milk is pretty disgusting']
 
 def build_stuff(identities):
-    types = map(lambda x: x.split('/')[1], identities)
+    types = [x.split('/')[1] for x in identities]
 
     # add something to the end of the client string so that the caps
     # hashes aren't all the same and so stop discoing

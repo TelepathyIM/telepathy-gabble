@@ -1,0 +1,52 @@
+name: Simple CI
+on:
+  push:
+  pull_request:
+
+jobs:
+  syntax_check:
+    runs-on: ubuntu-latest
+    container:
+      image: registry.freedesktop.org/telepathy/telepathy-gabble/debstbl:v1
+      options: -u 0:0
+    timeout-minutes: 5
+    steps:
+      # git clone --depth 20 -b meson https://github.com/rufferson/telepathy-gabble.git && cd telepathy-gabble
+    - uses: actions/checkout@v2
+    - name: Repoint to local wocky
+      run: sed -i '/freedesktop/s/^/#/;/github/s/^#//' subprojects/wocky.wrap
+    - name: Configure
+      run: meson _b -Dgoogle-relay=true
+    - name: Syntax Check
+      run: ninja -C_b check
+
+  buildntest:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        image:
+          - registry.freedesktop.org/telepathy/telepathy-gabble/debstbl:v1
+          - registry.freedesktop.org/telepathy/telepathy-gabble/osuselp:v1
+          - registry.freedesktop.org/telepathy/telepathy-gabble/fedoraw:v1
+    container:
+      image: ${{ matrix.image }}
+      options: -u 0:0
+    timeout-minutes: 10
+    steps:
+    - uses: actions/checkout@v2
+    - name: Repoint to local wocky
+      run: sed -i '/freedesktop/s/^/#/;/github/s/^#//' subprojects/wocky.wrap
+    - name: Configure
+      run: meson _b -Dgoogle-relay=true
+    - name: Build
+      run: ninja -C_b
+    - name: Test
+      run: meson test -C_b
+    - name: Artifacts
+      uses: actions/upload-artifact@v2
+      with:
+        name: meson-logs
+        path: |
+          _b/meson-logs/*
+          _b/tests/twisted/tools/gabble-testing.log
+      if: ${{ always() }}

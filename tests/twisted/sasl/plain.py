@@ -10,7 +10,7 @@ from saslutil import SaslEventAuthenticator, connect_and_get_sasl_channel, \
 
 JID = "test@example.org"
 PASSWORD = "pass"
-INITIAL_RESPONSE = '\0' + JID.split('@')[0] + '\0' + PASSWORD
+INITIAL_RESPONSE = str('\0' + JID.split('@')[0] + '\0' + PASSWORD).encode()
 
 def test_plain_success(q, bus, conn, stream):
     chan, props = connect_and_get_sasl_channel(q, bus, conn)
@@ -145,7 +145,7 @@ def test_bad_usage(q, bus, conn, stream):
     chan, props = connect_and_get_sasl_channel(q, bus, conn)
 
     call_async(q, chan.SASLAuthentication, 'Respond',
-            'This is uncalled for')
+            b'This is uncalled for')
     q.expect('dbus-error', method='Respond', name=cs.NOT_AVAILABLE)
 
     chan.SASLAuthentication.StartMechanismWithData('PLAIN', INITIAL_RESPONSE)
@@ -158,7 +158,7 @@ def test_bad_usage(q, bus, conn, stream):
     authenticator = e.authenticator
 
     call_async(q, chan.SASLAuthentication, 'StartMechanismWithData',
-            'PLAIN', 'foo')
+            'PLAIN', b'foo')
     q.expect('dbus-error', method='StartMechanismWithData',
             name=cs.NOT_AVAILABLE)
 
@@ -168,7 +168,7 @@ def test_bad_usage(q, bus, conn, stream):
              args=[cs.SASL_STATUS_SERVER_SUCCEEDED, '', {}])
 
     call_async(q, chan.SASLAuthentication, 'Respond',
-            'Responding after success')
+            b'Responding after success')
     q.expect('dbus-error', method='Respond', name=cs.NOT_AVAILABLE)
 
 if __name__ == '__main__':

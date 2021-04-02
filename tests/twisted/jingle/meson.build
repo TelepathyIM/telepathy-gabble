@@ -1,0 +1,16 @@
+twisted_tests += files(
+  'call-basics.py',
+  'call-codecoffer.py',
+  'call-content-adding-removal.py',
+  'call-dtmf.py',
+  'call-google-relay.py',
+  'call-hold-audio.py',
+  'call-hold-av.py',
+  'call-muc-cancel.py',
+  'call-muc.py',
+  'call-muc-re-re-request.py',
+  'decloak-peer.py',
+  'preload-caps-crash.py',
+  'session-id-collision.py',
+  'stun-server.py',
+  'unknown-session.py')

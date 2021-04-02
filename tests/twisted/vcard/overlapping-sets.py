@@ -35,12 +35,12 @@ def test(q, bus, conn, stream):
         vcard_set_event.stanza))
 
     # Before the server replies, the user sets their avatar
-    call_async(q, conn.Avatars, 'SetAvatar', 'hello', 'image/png')
+    call_async(q, conn.Avatars, 'SetAvatar', b'hello', 'image/png')
     sync_dbus(bus, q, conn)
     # This acknowledgement is for the nickname
     acknowledge_iq(stream, vcard_set_event.stanza)
 
-    hello_binval = base64.b64encode('hello')
+    hello_binval = base64.b64encode(b'hello').decode()
 
     # This sets the avatar
     vcard_set_event = q.expect('stream-iq', iq_type='set',

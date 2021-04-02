@@ -16,7 +16,7 @@ from jingletest2 import JingleTest2, test_dialects, JingleProtocol031
 from config import VOIP_ENABLED
 
 if not VOIP_ENABLED:
-    print "NOTE: built with --disable-voip"
+    print("NOTE: built with --disable-voip")
     raise SystemExit(77)
 
 def check_offer (bus, conn, content):
@@ -100,7 +100,7 @@ def try_to_access_old_offer(conn, path):
         offer = bus.get_object (conn.bus_name, path)
         ret = offer.GetAll (cs.CALL_CONTENT_MEDIA_DESCRIPTION,
             dbus_interface=dbus.PROPERTIES_IFACE)
-    except Exception, e:
+    except Exception as e:
         pass
     else:
         assert False, 'Offer still exists'
@@ -152,8 +152,8 @@ def test_incoming(jp, q, bus, conn, stream):
 
     try:
         ret = conn.GetAll (cs.CONN, dbus_interface=dbus.PROPERTIES_IFACE)
-    except Exception, e:
-        print 'Gabble probably crashed'
+    except Exception as e:
+        print('Gabble probably crashed')
         raise e
     else:
         # depending on the age of our telepathy-glib, we have at least
@@ -195,7 +195,7 @@ def test_outgoing(jp, q, bus, conn, stream):
 
     try:
         content.UpdateLocalMediaDescription(md, dbus_interface=cs.CALL_CONTENT_IFACE_MEDIA)
-    except DBusException, e:
+    except DBusException as e:
         # this should fail now that there is a codec offer around
         if e.get_dbus_name() != cs.NOT_AVAILABLE:
             raise e

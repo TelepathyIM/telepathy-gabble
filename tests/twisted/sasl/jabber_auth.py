@@ -12,7 +12,7 @@ import ns
 from saslutil import expect_sasl_channel
 
 JID = "test@localhost"
-PASSWORD = "pass"
+PASSWORD = b"pass"
 
 def test_jabber_pass_success(q, bus, conn, stream):
     conn.Connect()

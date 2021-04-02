@@ -1,6 +1,8 @@
 
-#define _GNU_SOURCE
 #include "config.h"
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
 #include "conn-location.h"
 
 #include <string.h>

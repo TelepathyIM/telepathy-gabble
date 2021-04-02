@@ -12,12 +12,12 @@ def test(q, bus, conn, stream):
     sync_stream(q, stream)
 
     call_async(
-        q, conn.Avatars, 'SetAvatar', 'Guy.brush', 'image/x-mighty-pirate')
+        q, conn.Avatars, 'SetAvatar', b'Guy.brush', 'image/x-mighty-pirate')
     expect_and_handle_get_vcard(q, stream)
     iq_event = q.expect(
         'stream-iq', iq_type='set', query_ns='vcard-temp', query_name='vCard')
     call_async(
-        q, conn.Avatars, 'SetAvatar', 'LeChuck.brush', 'image/x-ghost-pirate')
+        q, conn.Avatars, 'SetAvatar', b'LeChuck.brush', 'image/x-ghost-pirate')
 
     disconnect_conn(q, conn, stream)
 

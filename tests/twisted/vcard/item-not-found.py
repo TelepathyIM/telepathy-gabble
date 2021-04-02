@@ -26,7 +26,7 @@ def test(q, bus, conn, stream):
     sync_stream(q, stream)
 
     call_async(
-        q, conn.Avatars, 'SetAvatar', 'Guy.brush', 'image/x-mighty-pirate')
+        q, conn.Avatars, 'SetAvatar', b'Guy.brush', 'image/x-mighty-pirate')
 
     # Gabble checks again, but we still don't have a vCard
     expect_get_and_send_item_not_found(q, stream)

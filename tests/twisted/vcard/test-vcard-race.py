@@ -40,7 +40,7 @@ def test(q, bus, conn, stream):
     vcard = iq.firstChildElement()
     assert vcard.name == 'vCard', vcard.toXml()
 
-    call_async(q, conn.Avatars, 'SetAvatar', 'hello', 'image/png')
+    call_async(q, conn.Avatars, 'SetAvatar', b'hello', 'image/png')
 
     # We don't expect Gabble to send a second vCard request, since there's one
     # outstanding. But we want to ensure that SetAvatar reaches Gabble before
@@ -66,7 +66,7 @@ def test(q, bus, conn, stream):
         assert binvals is not None and len(binvals) == 1, repr(binvals)
         assert str(types[0]) == 'image/png'
         got = str(binvals[0]).strip()
-        exp = base64.b64encode('hello')
+        exp = base64.b64encode(b'hello').decode()
         assertEquals(exp, got)
 
     # Now Gabble should set a new vCard with both of the above changes.

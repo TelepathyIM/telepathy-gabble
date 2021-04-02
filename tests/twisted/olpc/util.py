@@ -10,7 +10,7 @@ import ns
 def properties_to_xml(properties):
     result = []
 
-    for key, (type, value) in properties.iteritems():
+    for key, (type, value) in properties.items():
         property = domish.Element((None, 'property'))
         property['type'] = type
         property['name'] = key

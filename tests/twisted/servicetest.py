@@ -20,9 +20,9 @@
 Infrastructure code for testing Telepathy services.
 """
 
-from twisted.internet import glib2reactor
+from twisted.internet import gireactor
 from twisted.internet.protocol import Protocol, Factory, ClientFactory
-glib2reactor.install()
+gireactor.install()
 import sys
 import time
 import os
@@ -41,6 +41,12 @@ import constants as cs
 
 tp_name_prefix = cs.PREFIX
 tp_path_prefix = cs.PATH_PREFIX
+
+from gi.repository import Gio
+
+tdb=Gio.TestDBus()
+tdb.add_service_dir(os.environ.get('GABBLE_TWISTED_BDIR')+'/tools/servicedir-uninstalled/')
+tdb.up()
 
 class DictionarySupersetOf (object):
     """Utility class for expecting "a dictionary with at least these keys"."""
@@ -76,7 +82,7 @@ def format_event(event):
     for key in sorted(dir(event)):
         if key != 'type' and not key.startswith('_'):
             ret.append('- %s: %s' % (
-                key, pprint.pformat(getattr(event, key))))
+                key, pprint.pformat(str(getattr(event, key)))))
 
             if key == 'error':
                 ret.append('%s' % getattr(event, key))
@@ -106,7 +112,7 @@ class EventPattern:
         if event.type != self.type:
             return False
 
-        for key, value in self.properties.iteritems():
+        for key, value in self.properties.items():
             try:
                 if getattr(event, key) != value:
                     return False
@@ -148,7 +154,7 @@ class BaseEventQueue:
 
     def log(self, s):
         if self.verbose:
-            print s
+            print(s)
 
     def log_queues(self, queues):
         self.log ("Waiting for event on: %s" % ", ".join(queues))
@@ -157,7 +163,7 @@ class BaseEventQueue:
         self.log('got event:')
 
         if self.verbose:
-            map(self.log, format_event(event))
+            [ self.log(fe) for fe in format_event(event)]
 
     def forbid_events(self, patterns):
         """
@@ -295,7 +301,7 @@ class BaseEventQueue:
             return self.event_queues.keys()
         else:
             available = self.event_queues.keys()
-            return filter(lambda x: x in available, queues)
+            return [x for x in queues if x in available]
 
 
     def pop_next(self, queue):
@@ -413,7 +419,7 @@ class IteratingEventQueue(BaseEventQueue):
                         Event('dbus-signal',
                             path=unwrap(kw['path']),
                             signal=kw['member'],
-                            args=map(unwrap, args),
+                            args=[unwrap(arg) for arg in args],
                             interface=kw['interface'])),
                 None,
                 None,
@@ -447,7 +453,7 @@ class IteratingEventQueue(BaseEventQueue):
             e = Event('dbus-method-call', message=message,
                 interface=message.get_interface(), path=message.get_path(),
                 raw_args=message.get_args_list(byte_arrays=True),
-                args=map(unwrap, message.get_args_list(byte_arrays=True)),
+                args=[unwrap(arg) for arg in message.get_args_list(byte_arrays=True)],
                 destination=str(destination),
                 method=message.get_member(),
                 sender=message.get_sender(),
@@ -515,7 +521,7 @@ class EventQueueTest(unittest.TestCase):
         queue.append(Event('baz-test', x=1))
         queue.append(Event('baz-test', x=2))
 
-        for x in xrange(1,2):
+        for x in range(1,2):
             e = queue.expect ('baz-test')
             assertEquals (x, e.x)
 
@@ -543,22 +549,35 @@ def unwrap(x):
     printed."""
 
     if isinstance(x, list):
-        return map(unwrap, x)
+        return [unwrap(arg) for arg in x]
 
     if isinstance(x, tuple):
-        return tuple(map(unwrap, x))
+        return tuple([unwrap(arg) for arg in x])
 
     if isinstance(x, dict):
-        return dict([(unwrap(k), unwrap(v)) for k, v in x.iteritems()])
+        return dict([(unwrap(k), unwrap(v)) for k, v in x.items()])
 
     if isinstance(x, dbus.Boolean):
         return bool(x)
 
-    for t in [unicode, str, long, int, float]:
+    for t in [str, int, float]:
         if isinstance(x, t):
             return t(x)
 
     return x
+
+# Make it kinda sortable to have it sorta comparable
+def rekey(x):
+    """Hack to sort multilevel nested objects like dbus structs to be
+    able to compare them."""
+    if isinstance(x, (list, set, tuple)):
+      return ','.join(sorted([ rekey(a) for a in sorted(x, key=rekey)]))
+    if isinstance(x, dict):
+      return ','.join(sorted('%s:%s'%(k,rekey(v)) for k,v in x.items()))
+    return str(x)
+
+def sort_d(a):
+    return sorted(unwrap(a), key=rekey)
 
 def call_async(test, proxy, method, *args, **kw):
     """Call a D-Bus method asynchronously and generate an event for the
@@ -595,7 +614,7 @@ class ProxyWrapper:
             dbus.Interface(object, tp_name_prefix + '.Properties')
         self.interfaces = dict([
             (name, dbus.Interface(object, iface))
-            for name, iface in others.iteritems()])
+            for name, iface in others.items()])
 
     def __getattr__(self, name):
         if name in self.interfaces:
@@ -750,7 +769,7 @@ def watch_tube_signals(q, tube):
         q.append(Event('tube-signal',
             path=kwargs['path'],
             signal=kwargs['member'],
-            args=map(unwrap, args),
+            args=[unwrap(arg) for arg in args],
             tube=tube))
 
     tube.add_signal_receiver(got_signal_cb,
@@ -846,7 +865,7 @@ def install_colourer():
 class DummyStream(object):
     def write(self, s):
         if 'CHECK_TWISTED_VERBOSE' in os.environ:
-            print s,
+            print(s),
 
     def flush(self):
         pass

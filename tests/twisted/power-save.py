@@ -110,8 +110,8 @@ def test_local_queueing(q, bus, conn, stream):
     p1 = q.expect('dbus-signal', signal='PresencesChanged')
     p2 = q.expect('dbus-signal', signal='PresencesChanged')
 
-    assertEquals('away', p1.args[0].values()[0][1])
-    assertEquals('xa', p2.args[0].values()[0][1])
+    assertEquals('away', list(p1.args[0].values())[0][1])
+    assertEquals('xa', list(p2.args[0].values())[0][1])
 
     # .. followed by the result of PEP notification ..
     event = q.expect('dbus-signal', signal='AliasesChanged')

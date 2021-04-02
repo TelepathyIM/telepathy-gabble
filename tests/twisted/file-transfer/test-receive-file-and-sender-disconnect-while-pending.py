@@ -8,7 +8,7 @@ from file_transfer_helper import exec_file_transfer_test, ReceiveFileTest
 from config import FILE_TRANSFER_ENABLED
 
 if not FILE_TRANSFER_ENABLED:
-    print "NOTE: built with --disable-file-transfer"
+    print("NOTE: built with --disable-file-transfer")
     raise SystemExit(77)
 
 class ReceiveFileAndSenderDisconnectWhilePendingTest(ReceiveFileTest):
@@ -30,7 +30,7 @@ class ReceiveFileAndSenderDisconnectWhilePendingTest(ReceiveFileTest):
             # IPv4 is always guaranteed to be available
             self.ft_channel.AcceptFile(cs.SOCKET_ADDRESS_TYPE_IPV4,
                 cs.SOCKET_ACCESS_CONTROL_LOCALHOST, "", 0)
-        except dbus.DBusException, e:
+        except dbus.DBusException as e:
             assert e.get_dbus_name() == cs.NOT_AVAILABLE
         else:
             assert False

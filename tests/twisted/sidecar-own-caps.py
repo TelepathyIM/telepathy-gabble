@@ -15,7 +15,7 @@ from config import PLUGINS_ENABLED
 TEST_PLUGIN_IFACE = cs.PREFIX + ".Gabble.Plugin.Test"
 
 if not PLUGINS_ENABLED:
-    print "NOTE: built without --enable-plugins, skipping"
+    print("NOTE: built without --enable-plugins, skipping")
     raise SystemExit(77) # which makes the test show up as skipped
 
 def test(q, bus, conn, stream):

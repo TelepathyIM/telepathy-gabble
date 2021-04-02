@@ -7,7 +7,7 @@ from file_transfer_helper import SendFileTest, ReceiveFileTest, \
 from config import JINGLE_FILE_TRANSFER_ENABLED
 
 if not JINGLE_FILE_TRANSFER_ENABLED:
-    print "NOTE: built with --disable-file-transfer or --disable-voip"
+    print("NOTE: built with --disable-file-transfer or --disable-voip")
     raise SystemExit(77)
 
 class ReceiveFileAndSenderDisconnectWhilePendingTest(ReceiveFileTest):
@@ -22,7 +22,7 @@ class ReceiveFileAndSenderDisconnectWhilePendingTest(ReceiveFileTest):
         try:
             self.ft_channel.AcceptFile(cs.SOCKET_ADDRESS_TYPE_UNIX,
                 cs.SOCKET_ACCESS_CONTROL_LOCALHOST, "", 0)
-        except dbus.DBusException, e:
+        except dbus.DBusException as e:
             assert e.get_dbus_name() == cs.NOT_AVAILABLE
         else:
             assert False

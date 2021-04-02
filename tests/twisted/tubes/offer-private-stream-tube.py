@@ -12,14 +12,14 @@ from twisted.words.xish import domish, xpath
 
 sample_parameters = dbus.Dictionary({
     's': 'hello',
-    'ay': dbus.ByteArray('hello'),
+    'ay': dbus.ByteArray(b'hello'),
     'u': dbus.UInt32(123),
     'i': dbus.Int32(-123),
     }, signature='sv')
 
 new_sample_parameters = dbus.Dictionary({
     's': 'newhello',
-    'ay': dbus.ByteArray('newhello'),
+    'ay': dbus.ByteArray(b'newhello'),
     'u': dbus.UInt32(123),
     'i': dbus.Int32(-123),
     }, signature='sv')
@@ -166,7 +166,7 @@ def test(q, bus, conn, stream, bytestream_cls,
     assert tube['service'] == 'newecho'
     assert tube['type'] == 'stream'
     assert not tube.hasAttribute('initiator')
-    stream_tube_id = long(tube['id'])
+    stream_tube_id = int(tube['id'])
 
     params = {}
     parameter_nodes = xpath.queryForNodes('/tube/parameters/parameter', tube)
@@ -262,7 +262,7 @@ def test(q, bus, conn, stream, bytestream_cls,
     bytestream1.open_bytestream()
 
     # have the fake client send us some data
-    data = 'hello, world'
+    data = b'hello, world'
     bytestream1.send_data(data)
 
     binary = bytestream1.get_data(len(data))
@@ -272,7 +272,7 @@ def test(q, bus, conn, stream, bytestream_cls,
     bytestream2.open_bytestream()
 
     # have the fake client send us some data
-    data = 'hello, new world'
+    data = b'hello, new world'
     bytestream2.send_data(data)
 
     binary = bytestream2.get_data(len(data))

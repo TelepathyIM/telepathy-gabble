@@ -63,7 +63,7 @@ def test(q, bus, conn, stream):
         EventPattern('dbus-signal', signal='TubeChannelStateChanged',
             args=[cs.TUBE_CHANNEL_STATE_OPEN]))
 
-    unix_socket_adr = accept_return_event.value[0]
+    unix_socket_adr = accept_return_event.value[0].decode()
 
     factory = EventProtocolClientFactory(q)
     reactor.connectUNIX(unix_socket_adr, factory)

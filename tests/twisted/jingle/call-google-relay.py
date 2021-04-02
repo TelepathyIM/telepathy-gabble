@@ -5,7 +5,7 @@ Test getting relay from Google jingleinfo
 import config
 
 if not config.GOOGLE_RELAY_ENABLED:
-    print "NOTE: built with --disable-google-relay"
+    print("NOTE: built with --disable-google-relay")
     raise SystemExit(77)
 
 import dbus
@@ -256,7 +256,7 @@ class CallGoogleRelayTest(CallTest):
     
             try:
                 chan.GetMembers()
-            except dbus.DBusException, e:
+            except dbus.DBusException as e:
                 # This should fail because the object's gone away, not because
                 # Gabble's crashed.
                 assert cs.DBUS_ERROR_UNKNOWN_METHOD == e.get_dbus_name(), \

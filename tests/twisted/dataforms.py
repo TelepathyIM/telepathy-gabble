@@ -12,7 +12,7 @@ from config import VOIP_ENABLED
 # to UpdateCapabilities or AdvertiseCapabilities. These caps are all related
 # to VoIP, so disabling VoIP breaks the assumptions this test is based on.
 if not VOIP_ENABLED:
-    print "NOTE: built with --disable-voip"
+    print("NOTE: built with --disable-voip")
     raise SystemExit(77)
 
 def test(q, bus, conn, stream):

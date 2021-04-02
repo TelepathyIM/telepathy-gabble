@@ -10,7 +10,7 @@ import ns
 
 def assertHasChild(node, uri, name):
     try:
-        node.elements(uri=uri, name=name).next()
+        next(node.elements(uri=uri, name=name))
     except StopIteration:
         raise AssertionError(
             "Expected <%s xmlns='%s'> to be a child of\n    %s" % (

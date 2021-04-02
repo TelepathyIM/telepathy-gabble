@@ -5,7 +5,7 @@ from file_transfer_helper import SendFileTest, exec_file_transfer_test
 from config import FILE_TRANSFER_ENABLED
 
 if not FILE_TRANSFER_ENABLED:
-    print "NOTE: built with --disable-file-transfer"
+    print("NOTE: built with --disable-file-transfer")
     raise SystemExit(77)
 
 class SendFileTransferProvideImmediately(SendFileTest):
@@ -16,7 +16,7 @@ class SendFileTransferProvideImmediately(SendFileTest):
             self.ft_channel.AcceptFile(self.address_type,
                 self.access_control, self.access_control_param, self.file.offset,
                 byte_arrays=True)
-        except dbus.DBusException, e:
+        except dbus.DBusException as e:
             assert e.get_dbus_name() == cs.NOT_AVAILABLE
         else:
             assert False

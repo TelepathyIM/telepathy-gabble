@@ -29,13 +29,13 @@ def test_get_avatar(q, bus, conn, stream, contact, handle, in_cache=False):
         vcard = iq.firstChildElement()
         photo = vcard.addElement('PHOTO')
         photo.addElement('TYPE', content='image/png')
-        photo.addElement('BINVAL', content=base64.b64encode('hello'))
+        photo.addElement('BINVAL', content=base64.b64encode(b'hello').decode())
         stream.send(iq)
 
     event = q.expect('dbus-signal', signal='AvatarRetrieved')
     assertEquals(handle, event.args[0])
-    assertEquals(hashlib.sha1('hello').hexdigest(), event.args[1])
-    assertEquals('hello', event.args[2])
+    assertEquals(hashlib.sha1(b'hello').hexdigest(), event.args[1])
+    assertEquals(b'hello', event.args[2])
     assertEquals('image/png', event.args[3])
 
     if in_cache:
@@ -117,20 +117,20 @@ def test(q, bus, conn, stream):
     vcard = iq.firstChildElement()
     photo = vcard.addElement('PHOTO')
     photo.addElement('TYPE', content='image/png')
-    photo.addElement('BINVAL', content=base64.b64encode('hello'))
+    photo.addElement('BINVAL', content=base64.b64encode(b'hello').decode())
     stream.send(iq)
 
     event = q.expect('dbus-signal', signal='AvatarRetrieved')
     assertEquals(busy_handle, event.args[0])
-    assertEquals(hashlib.sha1('hello').hexdigest(), event.args[1])
-    assertEquals('hello', event.args[2])
+    assertEquals(hashlib.sha1(b'hello').hexdigest(), event.args[1])
+    assertEquals(b'hello', event.args[2])
     assertEquals('image/png', event.args[3])
 
     # Test with our own avatar test@localhost/Resource2
     presence_stanza = make_presence('test@localhost/Resource2',
                                     to='test@localhost/Resource',
                                     show='away', status='At the pub',
-                                    photo=hashlib.sha1(':-D').hexdigest())
+                                    photo=hashlib.sha1(b':-D').hexdigest())
     stream.send(presence_stanza)
     iq_event = q.expect('stream-iq', to=None, query_ns='vcard-temp',
         query_name='vCard')
@@ -138,7 +138,7 @@ def test(q, bus, conn, stream):
     vcard = iq.firstChildElement()
     photo = vcard.addElement('PHOTO')
     photo.addElement('TYPE', content='image/png')
-    photo.addElement('BINVAL', content=base64.b64encode(':-D'))
+    photo.addElement('BINVAL', content=base64.b64encode(b':-D').decode())
 
     # do not send the vCard reply now. First, send another presence.
     q.forbid_events([avatar_request_event])
@@ -151,7 +151,7 @@ def test(q, bus, conn, stream):
     # Which results in an AvatarUpdated signal
     event = q.expect('dbus-signal', signal='AvatarUpdated')
     assertEquals(self_handle, event.args[0])
-    assertEquals(hashlib.sha1(':-D').hexdigest(), event.args[1])
+    assertEquals(hashlib.sha1(b':-D').hexdigest(), event.args[1])
 
     # So Gabble has the right hash, and no need to ask the vCard again
     stream.send(presence_stanza)
@@ -162,7 +162,7 @@ def test(q, bus, conn, stream):
     presence_stanza = make_presence('test@localhost/Resource2',
                                     to='test@localhost/Resource',
                                     show='away', status='At the pub',
-                                    photo=hashlib.sha1('\o/').hexdigest())
+                                    photo=hashlib.sha1(b'\o/').hexdigest())
     stream.send(presence_stanza)
     iq_event = q.expect('stream-iq', to=None, query_ns='vcard-temp',
         query_name='vCard')
@@ -170,22 +170,22 @@ def test(q, bus, conn, stream):
     vcard = iq.firstChildElement()
     photo = vcard.addElement('PHOTO')
     photo.addElement('TYPE', content='image/png')
-    photo.addElement('BINVAL', content=base64.b64encode('\o/'))
+    photo.addElement('BINVAL', content=base64.b64encode(b'\o/').decode())
     stream.send(iq)
 
     event = q.expect('dbus-signal', signal='AvatarUpdated')
     assertEquals(self_handle, event.args[0])
-    assertEquals(hashlib.sha1('\o/').hexdigest(), event.args[1])
+    assertEquals(hashlib.sha1(b'\o/').hexdigest(), event.args[1])
 
     # Gabble must reply without asking the vCard to the server because the
     # avatar must be in the cache
     q.forbid_events([avatar_request_event])
     conn.Avatars.RequestAvatars([self_handle])
     e = q.expect('dbus-signal', signal='AvatarRetrieved')
-    assertEquals('\o/', e.args[2])
+    assertEquals(b'\o/', e.args[2])
     conn.Avatars.RequestAvatars([handle])
     e = q.expect('dbus-signal', signal='AvatarRetrieved')
-    assertEquals('hello', e.args[2])
+    assertEquals(b'hello', e.args[2])
     q.unforbid_events([avatar_request_event])
 
     # First, ensure the pipeline is full

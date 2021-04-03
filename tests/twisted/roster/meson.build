@@ -12,4 +12,5 @@ twisted_tests += files([
   'test-roster.py',
   'test-roster-subscribe.py',
   'test-save-alias-to-roster.py',
+  'test-roster-cache.py',
   ])

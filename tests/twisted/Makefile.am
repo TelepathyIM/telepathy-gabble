@@ -88,6 +88,7 @@ TWISTED_TESTS = \
 	roster/test-roster.py \
 	roster/test-roster-subscribe.py \
 	roster/test-save-alias-to-roster.py \
+	roster/test-roster-cache.py \
 	sasl/abort.py \
 	sasl/close.py \
 	sasl/complex.py \

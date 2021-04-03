@@ -15,15 +15,13 @@ import base64
 import dbus
 import os
 
-from OpenSSL import crypto
-
 from twisted.words.protocols.jabber import xmlstream
 from twisted.words.protocols.jabber.client import IQ
 from twisted.words.xish import domish, xpath
 from twisted.internet import ssl
 
 import ns
-from gabbletest import exec_test, XmppAuthenticator
+from gabbletest import exec_test, XmppAuthenticator, TlsAuthenticator
 from servicetest import ProxyWrapper, EventPattern
 from servicetest import assertEquals, assertLength, assertSameSets
 import constants as cs
@@ -33,49 +31,6 @@ JID = "test@example.org"
 # the certificate is for the domain name 'weasel-juice.org'.
 # the files are copied from wocky/tests/certs/tls-[cert,key].pem
 CA_CERT_HOSTNAME = 'weasel-juice.org'
-
-CA_CERT = os.environ.get('GABBLE_TWISTED_PATH', '.') + '/tls-cert.pem'
-CA_KEY  = os.environ.get('GABBLE_TWISTED_PATH', '.') + '/tls-key.pem'
-
-class TlsAuthenticator(XmppAuthenticator):
-    def __init__(self, username, password, resource=None):
-        XmppAuthenticator.__init__(self, username, password, resource)
-        self.tls_encrypted = False
-
-    def streamTLS(self):
-        features = domish.Element((xmlstream.NS_STREAMS, 'features'))
-        starttls = features.addElement((ns.NS_XMPP_TLS, 'starttls'))
-        starttls.addElement('required')
-
-        self.xmlstream.send(features)
-
-        self.xmlstream.addOnetimeObserver("/starttls", self.tlsAuth)
-
-    def streamStarted(self, root=None):
-        self.streamInitialize(root)
-
-        if self.authenticated and self.tls_encrypted:
-            self.streamIQ()
-        elif self.tls_encrypted:
-            self.streamSASL()
-        else:
-            self.streamTLS()
-
-    def tlsAuth(self, auth):
-        with open(CA_KEY, 'rb') as f:
-            pem_key = f.read()
-            pkey = crypto.load_privatekey(crypto.FILETYPE_PEM, pem_key, b"")
-
-        with open(CA_CERT, 'rb') as f:
-            pem_cert = f.read()
-            cert = crypto.load_certificate(crypto.FILETYPE_PEM, pem_cert)
-
-        tls_ctx = ssl.CertificateOptions(privateKey=pkey, certificate=cert)
-
-        self.xmlstream.send(domish.Element((ns.NS_XMPP_TLS, 'proceed')))
-        self.xmlstream.transport.startTLS(tls_ctx)
-        self.xmlstream.reset()
-        self.tls_encrypted = True
 
 class ServerTlsChanWrapper(ProxyWrapper):
     def __init__(self, object, default=cs.CHANNEL, interfaces={

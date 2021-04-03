@@ -50,3 +50,29 @@ jobs:
           _b/meson-logs/*
           _b/tests/twisted/tools/gabble-testing.log
       if: ${{ always() }}
+
+  autobuild:
+    runs-on: ubuntu-18.04
+    timeout-minutes: 10
+    steps:
+    - uses: actions/checkout@v2
+    - name: Install prereqs
+      run: |-
+        sudo apt-get update && sudo apt-get install --no-install-recommends -qq -y build-essential \
+        ccache automake libtool libglib2.0-dev glib-networking libtelepathy-glib-dev libsasl2-dev \
+        libxml2-dev libsoup2.4-dev libsasl2-modules-gssapi-mit gnutls-bin libsqlite3-dev xsltproc \
+        libssl-dev libgnutls28-dev libnice-dev python3-twisted python3-dbus
+    - name: Bootstrap and Config
+      run: bash autogen.sh
+    - name: Build
+      run: make
+    - name: Test
+      run: make check
+    - name: Artifacts
+      uses: actions/upload-artifact@v2
+      with:
+        name: automake-logs
+        path: |
+          tests/twisted/tools/gabble-testing.log
+          FIXME.out
+      if: ${{ always() }}

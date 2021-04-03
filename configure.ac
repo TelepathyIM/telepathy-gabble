@@ -130,6 +130,7 @@ if test "$with_ca_certificates" = "no"; then
 else
     if test -z "$with_ca_certificates"; then
         for f in /etc/pki/tls/certs/ca-bundle.crt \
+                 /etc/ssl/ca-bundle.pem \
                  /etc/ssl/certs/ca-certificates.crt; do
             if test -f "$f"; then
                 with_ca_certificates="$f"
@@ -293,7 +294,7 @@ if test -z "$XSLTPROC"; then
   AC_MSG_ERROR([xsltproc (from the libxslt source package) is required])
 fi
 
-AM_PATH_PYTHON([2.5])
+AM_PATH_PYTHON([3.6])
 
 # Check for a Python >= 2.5 with Twisted, to run the tests
 AC_MSG_CHECKING([for Python with Twisted and XMPP protocol support])

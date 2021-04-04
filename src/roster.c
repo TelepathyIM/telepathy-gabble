@@ -229,11 +229,7 @@ gabble_roster_finalize (GObject *object)
   if (priv->version != NULL)
     g_string_free (priv->version, TRUE);
 
-  if (priv->rcache != NULL)
-    {
-      roster_cache_free_shared ();
-      priv->rcache = NULL;
-    }
+  g_clear_object (&priv->rcache);
 
   G_OBJECT_CLASS (gabble_roster_parent_class)->finalize (object);
 }
@@ -1446,8 +1442,10 @@ got_roster_iq (GabbleRoster *roster,
 
   if (query_node)
     {
+      const gchar *ver = wocky_node_get_attribute (query_node, "ver");
       process_roster (roster, query_node);
-      if (roster->priv->rcache != NULL)
+
+      if (roster->priv->rcache != NULL && ver != NULL && strlen (ver) != 0)
         {
           const gchar *user = conn_util_get_bare_self_jid (priv->conn);
           DEBUG ("updating roster cache for %s", user);

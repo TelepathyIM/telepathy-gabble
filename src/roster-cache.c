@@ -604,7 +604,10 @@ roster_cache_get_roster (RosterCache *self,
 
   if (!roster_cache_select (self, &stmt,
         "SELECT jid,name,subscription FROM roster WHERE user=?", user, NULL))
-    return NULL;
+    {
+      wocky_node_free (roster);
+      return NULL;
+    }
 
   do
     {
@@ -618,7 +621,7 @@ roster_cache_get_roster (RosterCache *self,
         '@', "jid", val,
         '@', "name", ((name != NULL)? name : (guchar *)""),
         '@', "subscription",
-          ((sub & 3)?((sub & 1)?(sub & 2 ? "both":"to"):"from"):"none"),
+          ((sub & 3)?((sub & 1)?(sub & 2 ? "both":"from"):"to"):"none"),
         '*', &item,
         ')', NULL);
       if (sub & 8)
@@ -725,7 +728,7 @@ roster_cache_update_roster (RosterCache *self,
           while (wocky_node_iter_next (&jter, &group))
             {
               if (!roster_cache_insert (self,
-                  "INSERT INTO groups(user, jid, group) VALUES(?, ?, ?)",
+                  "INSERT INTO groups(user, jid, grp) VALUES(?, ?, ?)",
                   user, jid, group->content, NULL, NULL))
                 goto err;
             }

@@ -7,7 +7,7 @@ jobs:
   syntax_check:
     runs-on: ubuntu-latest
     container:
-      image: registry.freedesktop.org/telepathy/telepathy-gabble/debstbl:v1
+      image: registry.freedesktop.org/telepathy/telepathy-gabble/debstbl:v2
       options: -u 0:0
     timeout-minutes: 5
     steps:
@@ -25,9 +25,9 @@ jobs:
     strategy:
       matrix:
         image:
-          - registry.freedesktop.org/telepathy/telepathy-gabble/debstbl:v1
-          - registry.freedesktop.org/telepathy/telepathy-gabble/osuselp:v1
-          - registry.freedesktop.org/telepathy/telepathy-gabble/fedoraw:v1
+          - registry.freedesktop.org/telepathy/telepathy-gabble/debstbl:v2
+          - registry.freedesktop.org/telepathy/telepathy-gabble/osuselp:v2
+          - registry.freedesktop.org/telepathy/telepathy-gabble/fedoraw:v2
     container:
       image: ${{ matrix.image }}
       options: -u 0:0

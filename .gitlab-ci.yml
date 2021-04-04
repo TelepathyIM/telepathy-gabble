@@ -4,10 +4,11 @@ stages:
   - test
 
 variables:
-  FEDORA_MB: registry.freedesktop.org/telepathy/telepathy-gabble/fedoraw:v1
-  DEBIAN_MB: registry.freedesktop.org/telepathy/telepathy-gabble/debtest:v1
-  DEBSTB_MB: registry.freedesktop.org/telepathy/telepathy-gabble/debstbl:v1
-  SUSELP_MB: registry.freedesktop.org/telepathy/telepathy-gabble/osuselp:v1
+  FEDORA_MB: registry.freedesktop.org/telepathy/telepathy-gabble/fedoraw:v2
+  DEBIAN_MB: registry.freedesktop.org/telepathy/telepathy-gabble/debtest:v2
+  DEBSTB_MB: registry.freedesktop.org/telepathy/telepathy-gabble/debstbl:v2
+  SUSELP_MB: registry.freedesktop.org/telepathy/telepathy-gabble/osuselp:v2
+  # OpenSUSE Tumbleweed has broken Twisted, can still be used in wocky CI
   SUSETW_MB: registry.freedesktop.org/telepathy/telepathy-gabble/osusetw:v1
   WOCKY_DEBUG: all
   #G_MESSAGES_DEBUG: all
@@ -18,6 +19,21 @@ variables:
   cache:
     key: "$CI_JOB_IMAGE:$CI_COMMIT_SHA"
     paths: [ _b ]
+
+.def_ac:
+  before_script:
+    - sh autogen.sh
+  cache:
+    key: "AC:$CI_JOB_IMAGE:$CI_COMMIT_SHA"
+    paths:
+      - src/.libs
+      - plugins/.libs
+      - extensions/_gen
+      - extensions/.libs
+      - lib/gibber/.libs
+      - lib/ext/wocky/wocky/.libs
+      - tests/.libs
+      - tests/twisted/.libs
 
 style-ck-mb:
   extends: .def_mb
@@ -54,6 +70,29 @@ test-mb:
     paths:
       - "_b/meson-logs"
       - "_b/tests/twisted/tools/gabble-testing.log"
+  parallel:
+    matrix:
+      - image:
+        - $FEDORA_MB
+        - $DEBIAN_MB
+        #- $SUSETW_MB
+        - $DEBSTB_MB
+        - $SUSELP_MB
+
+test-ac:
+  extends: .def_ac
+  stage: test
+  image: $image
+  script:
+    - make
+    - make check
+  artifacts:
+    reports:
+    expire_in: 1 week
+    when: always
+    paths:
+      - "FIXME.out"
+      - "tests/twisted/tools/gabble-testing.log"
   parallel:
     matrix:
       - image:

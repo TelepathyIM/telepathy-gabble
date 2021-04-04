@@ -1,0 +1,29 @@
+FROM opensuse/leap:latest
+
+RUN zypper -q update -y \
+    && zypper -q install -y -t pattern devel_basis \
+    && zypper -q install -y ccache glib2-devel glib-networking \
+    && zypper -q clean
+
+RUN zypper -q install -y telepathy-glib-devel telepathy-gabble \
+		meson python3-Twisted python3-dbus-python git \
+		libxslt-tools libnice-devel dbus-1-glib-devel \
+		libxml2-devel libsoup-devel sqlite3-devel \
+                cyrus-sasl-digestmd5 cyrus-sasl-plain gnutls \
+                cyrus-sasl-devel cyrus-sasl-scram \
+    && zypper -q clean
+
+# Debug the docker if required
+#RUN zypper install -y valgrind gdb git vim
+
+ARG HOST_USER_ID=1000
+ENV HOST_USER_ID ${HOST_USER_ID}
+RUN useradd -u $HOST_USER_ID -ms /bin/bash user
+RUN ln -fs /usr/bin/python3 /usr/local/bin/python
+RUN dbus-uuidgen --ensure
+
+USER user
+WORKDIR /home/user
+
+ENV LANG C.UTF-8
+

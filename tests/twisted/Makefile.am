@@ -119,6 +119,7 @@ TWISTED_TESTS = \
 	text/test-text-delayed.py \
 	text/test-text-no-body.py \
 	text/test-text.py \
+	text/test-carbons.py \
 	tls/legacy-jabber.py \
 	tls/server-tls-channel.py \
 	version.py \

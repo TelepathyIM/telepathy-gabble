@@ -12,4 +12,5 @@ twisted_tests += files([
   'test-text-delayed.py',
   'test-text-no-body.py',
   'test-text.py',
+  'test-carbons.py',
   ])

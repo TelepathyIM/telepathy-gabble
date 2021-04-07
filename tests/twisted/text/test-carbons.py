@@ -5,7 +5,7 @@ Test text channel with carbons.
 
 from gabbletest import XmppXmlStream, exec_test, elem, acknowledge_iq
 from servicetest import (EventPattern, wrap_channel, assertEquals, assertLength,
-        assertContains)
+        assertContains, sync_dbus)
 import constants as cs
 
 NS_CARBONS = 'urn:xmpp:carbons:2'
@@ -172,6 +172,50 @@ def test(q, bus, conn, stream):
     assert body['content-type'] == 'text/plain', body
     assert body['content'] == u'goodbye', body
 
+    # Verify source protection
+    msg = elem('message', type='chat', from_='smith@matrix.org/agent712')(
+        elem(NS_CARBONS, 'received')(
+            elem(NS_FORWARD, 'forwarded')(
+                elem('jabber:client','message', id=id, from_='foo@bar.com/Pidgin', type='chat')(
+                    elem('body')('Mr. Anderson!')
+                )
+            )
+        )
+    )
+    q.forbid_events([EventPattern('dbus-signal', signal='MessageReceived')])
+    stream.send(msg)
+    sync_dbus(bus, q, conn)
+    q.unforbid_all()
+
+    # And MUC - demo attack vector
+    msg = elem('message')(
+        elem(NS_CARBONS, 'received')(
+            elem(NS_FORWARD, 'forwarded')(
+                elem('jabber:client','message', id=sent_token, from_='foo@bar.com/Pidgin', to='test@localhost')(
+                    elem('body')('oh btb')
+               )
+            )
+        ),
+        elem('jabber:x:conference', 'x', jid='room@localhost')
+     )
+    stream.send(msg)
+    event = q.expect('stream-iq', iq_type='get', query_ns='http://jabber.org/protocol/disco#info', to='room@localhost')
+
+    # MUC Invite Attack execution
+    msg = elem('message', from_='smith@matrix.org/agent712')(
+        elem(NS_CARBONS, 'received')(
+            elem(NS_FORWARD, 'forwarded')(
+                elem('jabber:client','message', id=sent_token, from_='foo@bar.com/Pidgin', to='test@localhost')(
+                    elem('body')('Nice party here, really')
+               )
+            )
+        ),
+        elem('jabber:x:conference', 'x', jid='crimescene@set.up')
+     )
+    q.forbid_events([EventPattern('dbus-signal', signal='MessageReceived')])
+    stream.send(msg)
+    sync_dbus(bus, q, conn)
+    q.unforbid_all()
 
 if __name__ == '__main__':
     exec_test(test, protocol=CarbonStream, params={'message-carbons':True})

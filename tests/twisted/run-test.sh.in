@@ -39,6 +39,9 @@ else
   export GABBLE_TWISTED_PATH
 fi
 
+GABBLE_TWISTED_BDIR=$GABBLE_TWISTED_PATH
+export GABBLE_TWISTED_BDIR
+
 if [ -n "$1" ] ; then
   list="$1"
 else

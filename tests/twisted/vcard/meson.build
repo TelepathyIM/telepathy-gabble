@@ -19,6 +19,7 @@ twisted_tests += files(
   'test-avatar.py',
   'test-avatar-retrieved.py',
   'test-avatar-tokens.py',
+  'test-avatar-pep.py',
   'test-save-alias-to-vcard.py',
   'test-set-alias.py',
   'test-vcard-cache.py',

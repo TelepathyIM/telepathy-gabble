@@ -217,6 +217,23 @@ im_factory_message_cb (
   gboolean create_if_missing;
   gboolean sent;
 
+  /* CVE-2017-5589+ verification */
+  if (wocky_node_get_child_ns (wocky_stanza_get_top_node (message), "received", NS_CARBONS)
+      || wocky_node_get_child_ns (wocky_stanza_get_top_node (message), "sent", NS_CARBONS))
+    {
+      if ((from = wocky_stanza_get_from (message)) != NULL)
+        {
+          TpBaseConnection *conn = TP_BASE_CONNECTION (fac->priv->conn);
+          TpHandleRepoIface *handles = tp_base_connection_get_handles (conn,
+              TP_HANDLE_TYPE_CONTACT);
+          TpHandle from_handle = tp_handle_ensure (handles, from, NULL, NULL);
+          TpHandle self_handle = tp_base_connection_get_self_handle (conn);
+
+          if (from_handle != self_handle)
+            return FALSE;
+        }
+    }
+
   if (!gabble_message_util_parse_incoming_message (message, &from, &to, &stamp,
         &msgtype, &id, &body, &state, &send_error, &delivery_status, &delivery_token, &sent))
     return TRUE;

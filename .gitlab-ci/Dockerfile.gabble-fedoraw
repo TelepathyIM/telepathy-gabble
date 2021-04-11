@@ -1,0 +1,24 @@
+FROM fedora:rawhide
+
+RUN dnf update -y \
+    && dnf install -y 'dnf-command(builddep)' \
+    && dnf builddep -y glib-networking telepathy-gabble \
+    && dnf clean all
+RUN dnf install -y git meson python3-twisted python3-gobject dbus-daemon \
+        cyrus-sasl-scram cyrus-sasl-md5 cyrus-sasl-plain gnutls-utils \
+    && dnf clean all
+
+# Debug the docker if required
+#RUN dnf install -y valgrind gdb \
+#    && dnf debuginfo-install -y cyrus-sasl cyrus-sasl-scram \
+#			glib glib-networking openssl gnutls
+
+ARG HOST_USER_ID=1000
+ENV HOST_USER_ID ${HOST_USER_ID}
+RUN useradd -u $HOST_USER_ID -ms /bin/bash user
+RUN ln -fs /usr/bin/python3 /usr/local/bin/python
+
+USER user
+WORKDIR /home/user
+
+ENV LANG C.UTF-8

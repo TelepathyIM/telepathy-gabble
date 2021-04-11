@@ -25,6 +25,10 @@ from twisted.internet import reactor, ssl
 
 import dbus
 
+from OpenSSL import crypto
+CA_CERT = os.environ.get('GABBLE_TWISTED_PATH', '.') + '/tls-cert.pem'
+CA_KEY  = os.environ.get('GABBLE_TWISTED_PATH', '.') + '/tls-key.pem'
+
 def make_result_iq(stream, iq, add_query_node=True):
     result = IQ(stream, "result")
     result["id"] = iq["id"]
@@ -180,6 +184,10 @@ class JabberAuthenticator(GabbleAuthenticator):
         self.xmlstream.dispatch(self.xmlstream, xmlstream.STREAM_AUTHD_EVENT)
 
 class XmppAuthenticator(GabbleAuthenticator):
+    features = {
+        ns.NS_XMPP_BIND: 'bind',
+        ns.NS_XMPP_SESSION: 'session',
+    }
     def __init__(self, username, password, resource=None):
         GabbleAuthenticator.__init__(self, username, password, resource)
         self.authenticated = False
@@ -197,10 +205,7 @@ class XmppAuthenticator(GabbleAuthenticator):
         self.xmlstream.sendHeader()
 
     def streamIQ(self):
-        features = elem(xmlstream.NS_STREAMS, 'features')(
-            elem(ns.NS_XMPP_BIND, 'bind'),
-            elem(ns.NS_XMPP_SESSION, 'session'),
-        )
+        features = elem(xmlstream.NS_STREAMS, 'features')(*(elem(k,v) for k,v in self.features.items()))
         self.xmlstream.send(features)
 
         self.xmlstream.addOnetimeObserver(
@@ -254,6 +259,43 @@ class XmppAuthenticator(GabbleAuthenticator):
 
     def sessionIq(self, iq):
         self.xmlstream.send(make_result_iq(self.xmlstream, iq))
+
+class TlsAuthenticator(XmppAuthenticator):
+    def __init__(self, username, password, resource=None):
+        super().__init__(username, password, resource)
+        self.tls_encrypted = False
+
+    def streamStarted(self, root=None):
+        if self.tls_encrypted:
+            XmppAuthenticator.streamStarted(self, root)
+        else:
+            self.streamInitialize(root)
+            self.streamTLS()
+
+    def streamTLS(self):
+        features = domish.Element((xmlstream.NS_STREAMS, 'features'))
+        starttls = features.addElement((ns.NS_XMPP_TLS, 'starttls'))
+        starttls.addElement('required')
+
+        self.xmlstream.send(features)
+
+        self.xmlstream.addOnetimeObserver("/starttls", self.tlsAuth)
+
+    def tlsAuth(self, auth):
+        with open(CA_KEY, 'rb') as f:
+            pem_key = f.read()
+            pkey = crypto.load_privatekey(crypto.FILETYPE_PEM, pem_key, b"")
+
+        with open(CA_CERT, 'rb') as f:
+            pem_cert = f.read()
+            cert = crypto.load_certificate(crypto.FILETYPE_PEM, pem_cert)
+
+        tls_ctx = ssl.CertificateOptions(privateKey=pkey, certificate=cert)
+
+        self.xmlstream.send(domish.Element((ns.NS_XMPP_TLS, 'proceed')))
+        self.xmlstream.transport.startTLS(tls_ctx)
+        self.xmlstream.reset()
+        self.tls_encrypted = True
 
 class StreamEvent(servicetest.Event):
     def __init__(self, type_, stanza, stream):
@@ -722,7 +764,13 @@ def exec_test_deferred(fun, params, protocol=None, timeout=None,
         d.addBoth((lambda *args: reactor.crash()))
     else:
         # please ignore the POSIX behind the curtain
-        d.addBoth((lambda *args: os._exit(1)))
+        def confess(*args):
+            from pprint import pprint
+            sys.stdout = sys.__stdout__
+            print(traceback.format_exc(error))
+            sys.stdout.flush()
+            os._exit(3)
+        d.addBoth((confess))
 
 
 def exec_test(fun, params=None, protocol=None, timeout=None,

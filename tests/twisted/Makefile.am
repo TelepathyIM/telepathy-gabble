@@ -88,6 +88,7 @@ TWISTED_TESTS = \
 	roster/test-roster.py \
 	roster/test-roster-subscribe.py \
 	roster/test-save-alias-to-roster.py \
+	roster/test-roster-cache.py \
 	sasl/abort.py \
 	sasl/close.py \
 	sasl/complex.py \
@@ -111,6 +112,7 @@ TWISTED_TESTS = \
 	text/initiate.py \
 	text/initiate-requestotron.py \
 	text/receipts.py \
+	text/markers.py \
 	text/respawn.py \
 	text/send-error.py \
 	text/send-to-correct-resource.py \
@@ -118,6 +120,7 @@ TWISTED_TESTS = \
 	text/test-text-delayed.py \
 	text/test-text-no-body.py \
 	text/test-text.py \
+	text/test-carbons.py \
 	tls/legacy-jabber.py \
 	tls/server-tls-channel.py \
 	version.py \
@@ -163,6 +166,7 @@ TWISTED_VCARD_TESTS = \
 	vcard/test-avatar.py \
 	vcard/test-avatar-retrieved.py \
 	vcard/test-avatar-tokens.py \
+	vcard/test-avatar-pep.py \
 	vcard/test-save-alias-to-vcard.py \
 	vcard/test-set-alias.py \
 	vcard/test-vcard-cache.py \

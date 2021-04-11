@@ -12,6 +12,8 @@ GABBLE_PLUGIN_DIR="@abs_top_builddir@/plugins:@abs_top_builddir@/plugins/console
 export GABBLE_PLUGIN_DIR
 WOCKY_CAPS_CACHE=:memory:
 export WOCKY_CAPS_CACHE
+ROSTER_CACHE=:memory:
+export ROSTER_CACHE
 WOCKY_CAPS_CACHE_SIZE=50
 export WOCKY_CAPS_CACHE_SIZE
 G_MESSAGES_DEBUG=all

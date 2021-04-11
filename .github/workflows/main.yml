@@ -7,7 +7,7 @@ jobs:
   syntax_check:
     runs-on: ubuntu-latest
     container:
-      image: registry.freedesktop.org/telepathy/telepathy-gabble/debstbl:v1
+      image: registry.freedesktop.org/telepathy/telepathy-gabble/debstbl:v2
       options: -u 0:0
     timeout-minutes: 5
     steps:
@@ -25,9 +25,9 @@ jobs:
     strategy:
       matrix:
         image:
-          - registry.freedesktop.org/telepathy/telepathy-gabble/debstbl:v1
-          - registry.freedesktop.org/telepathy/telepathy-gabble/osuselp:v1
-          - registry.freedesktop.org/telepathy/telepathy-gabble/fedoraw:v1
+          - registry.freedesktop.org/telepathy/telepathy-gabble/debstbl:v2
+          - registry.freedesktop.org/telepathy/telepathy-gabble/osuselp:v2
+          - registry.freedesktop.org/telepathy/telepathy-gabble/fedoraw:v2
     container:
       image: ${{ matrix.image }}
       options: -u 0:0
@@ -49,4 +49,30 @@ jobs:
         path: |
           _b/meson-logs/*
           _b/tests/twisted/tools/gabble-testing.log
+      if: ${{ always() }}
+
+  autobuild:
+    runs-on: ubuntu-18.04
+    timeout-minutes: 10
+    steps:
+    - uses: actions/checkout@v2
+    - name: Install prereqs
+      run: |-
+        sudo apt-get update && sudo apt-get install --no-install-recommends -qq -y build-essential \
+        ccache automake libtool libglib2.0-dev glib-networking libtelepathy-glib-dev libsasl2-dev \
+        libxml2-dev libsoup2.4-dev libsasl2-modules-gssapi-mit gnutls-bin libsqlite3-dev xsltproc \
+        libssl-dev libgnutls28-dev libnice-dev python3-twisted python3-dbus
+    - name: Bootstrap and Config
+      run: bash autogen.sh
+    - name: Build
+      run: make
+    - name: Test
+      run: make check
+    - name: Artifacts
+      uses: actions/upload-artifact@v2
+      with:
+        name: automake-logs
+        path: |
+          tests/twisted/tools/gabble-testing.log
+          FIXME.out
       if: ${{ always() }}

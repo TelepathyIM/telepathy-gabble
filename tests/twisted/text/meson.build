@@ -5,6 +5,7 @@ twisted_tests += files([
   'initiate.py',
   'initiate-requestotron.py',
   'receipts.py',
+  'markers.py',
   'respawn.py',
   'send-error.py',
   'send-to-correct-resource.py',

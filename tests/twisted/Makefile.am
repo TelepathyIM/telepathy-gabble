@@ -112,6 +112,7 @@ TWISTED_TESTS = \
 	text/initiate.py \
 	text/initiate-requestotron.py \
 	text/receipts.py \
+	text/markers.py \
 	text/respawn.py \
 	text/send-error.py \
 	text/send-to-correct-resource.py \
